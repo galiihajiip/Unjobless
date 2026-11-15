@@ -61,4 +61,8 @@ class UserUpload(Connector):
     )
 
 
-SYSTEM_SOURCE_KEYS = {"user_url_import": "user-url-import", "user_paste": "user-paste", "user_upload": "user-upload"}
+SYSTEM_SOURCE_KEYS = {
+    "user_url_import": "user-url-import",
+    "user_paste": "user-paste",
+    "user_upload": "user-upload",
+}
