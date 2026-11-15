@@ -185,13 +185,19 @@ def feed(
     if seniority:
         conds.append(JobVacancy.seniority.in_(seniority))
     if city:
+        city_conds: list[Any] = [
+            func.lower(JobLocation.city) == c.lower() for c in city if c.lower() != "remote"
+        ]
+        if "remote" in [c.lower() for c in city]:
+            city_conds.append(JobLocation.is_remote.is_(True))
+            city_conds.append(JobVacancy.work_arrangement == "REMOTE")
         conds.append(
-            exists().where(
-                JobLocation.vacancy_id == JobVacancy.id,
-                or_(
-                    *[func.lower(JobLocation.city) == c.lower() for c in city],
-                    JobLocation.is_remote.is_(True) if "remote" in [c.lower() for c in city] else False,
+            or_(
+                exists().where(
+                    JobLocation.vacancy_id == JobVacancy.id,
+                    or_(*city_conds[:-1] if "remote" in [c.lower() for c in city] else city_conds),
                 ),
+                *(city_conds[-1:] if "remote" in [c.lower() for c in city] else []),
             )
         )
     for sk in skill:
