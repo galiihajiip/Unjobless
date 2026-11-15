@@ -11,8 +11,21 @@ from typing import Any
 import structlog
 
 SENSITIVE_KEYS = {
-    "password", "api_key", "apikey", "authorization", "cookie", "set-cookie", "token",
-    "secret", "session", "csrf", "master_key", "x-api-key", "cv_text", "raw_text", "resume_text",
+    "password",
+    "api_key",
+    "apikey",
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "token",
+    "secret",
+    "session",
+    "csrf",
+    "master_key",
+    "x-api-key",
+    "cv_text",
+    "raw_text",
+    "resume_text",
 }
 _KEY_PATTERNS = [
     re.compile(r"sk-[A-Za-z0-9_\-]{12,}"),
@@ -27,7 +40,9 @@ def _scrub(value: Any) -> Any:
             value = pat.sub("[REDACTED]", value)
         return value
     if isinstance(value, dict):
-        return {k: ("[REDACTED]" if str(k).lower() in SENSITIVE_KEYS else _scrub(v)) for k, v in value.items()}
+        return {
+            k: ("[REDACTED]" if str(k).lower() in SENSITIVE_KEYS else _scrub(v)) for k, v in value.items()
+        }
     if isinstance(value, list | tuple):
         return type(value)(_scrub(v) for v in value)
     return value
