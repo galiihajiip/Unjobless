@@ -48,7 +48,9 @@ class EncryptedSecret(Base, Timestamps):
 class Source(Base, Timestamps):
     __tablename__ = "sources"
     __table_args__ = (
-        CheckConstraint("schedule_interval_seconds IS NULL OR schedule_interval_seconds >= 300", name="min_interval"),
+        CheckConstraint(
+            "schedule_interval_seconds IS NULL OR schedule_interval_seconds >= 300", name="min_interval"
+        ),
         CheckConstraint("max_concurrency BETWEEN 1 AND 8", name="concurrency_range"),
         CheckConstraint("rate_limit_per_minute BETWEEN 1 AND 600", name="rate_range"),
         CheckConstraint(
@@ -69,8 +71,12 @@ class Source(Base, Timestamps):
         enum_col(PolicyStatus), nullable=False, default=PolicyStatus.UNREVIEWED
     )
     policy_notes: Mapped[str | None] = mapped_column(Text)
-    state: Mapped[SourceState] = mapped_column(enum_col(SourceState), nullable=False, default=SourceState.DISABLED)
-    health: Mapped[SourceHealth] = mapped_column(enum_col(SourceHealth), nullable=False, default=SourceHealth.UNKNOWN)
+    state: Mapped[SourceState] = mapped_column(
+        enum_col(SourceState), nullable=False, default=SourceState.DISABLED
+    )
+    health: Mapped[SourceHealth] = mapped_column(
+        enum_col(SourceHealth), nullable=False, default=SourceHealth.UNKNOWN
+    )
     health_reason: Mapped[str | None] = mapped_column(Text)
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     secret_id: Mapped[int | None] = mapped_column(ForeignKey("encrypted_secrets.id", ondelete="SET NULL"))
@@ -87,7 +93,9 @@ class Source(Base, Timestamps):
 class SourcePolicyReview(Base):
     __tablename__ = "source_policy_reviews"
     id: Mapped[int] = pk()
-    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), index=True, nullable=False)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("sources.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     decision: Mapped[PolicyStatus] = mapped_column(enum_col(PolicyStatus), nullable=False)
     robots_summary: Mapped[str | None] = mapped_column(Text)
     terms_notes: Mapped[str | None] = mapped_column(Text)
@@ -146,11 +154,15 @@ class SourceRun(Base):
 class SourceRunItem(Base):
     __tablename__ = "source_run_items"
     id: Mapped[int] = pk()
-    run_id: Mapped[int] = mapped_column(ForeignKey("source_runs.id", ondelete="CASCADE"), index=True, nullable=False)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("source_runs.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     external_id: Mapped[str | None] = mapped_column(String(300))
     url: Mapped[str | None] = mapped_column(Text)
     outcome: Mapped[RunItemOutcome] = mapped_column(enum_col(RunItemOutcome), nullable=False)
-    raw_version_id: Mapped[int | None] = mapped_column(ForeignKey("raw_source_versions.id", ondelete="SET NULL"))
+    raw_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("raw_source_versions.id", ondelete="SET NULL")
+    )
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -159,13 +171,17 @@ class SourceCursor(Base):
     __tablename__ = "source_cursors"
     source_id: Mapped[int] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True)
     cursor: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class SourceHealthEvent(Base):
     __tablename__ = "source_health_events"
     id: Mapped[int] = pk()
-    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), index=True, nullable=False)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("sources.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     health: Mapped[SourceHealth] = mapped_column(enum_col(SourceHealth), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text)
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
