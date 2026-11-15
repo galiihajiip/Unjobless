@@ -21,9 +21,9 @@ def run_source(run_id: int) -> None:
 @app.periodic(cron="* * * * *", periodic_id="tick")
 @app.task(name="scheduler_tick", queue="maintenance", queueing_lock="scheduler_tick")
 def scheduler_tick(timestamp: int) -> None:
+    from unjobless.jobs.maintenance import redeliver_pending
     from unjobless.jobs.queue import defer
     from unjobless.jobs.runner import scheduler_tick as tick
-    from unjobless.jobs.maintenance import redeliver_pending
 
     with session_scope() as db:
         for run_id in tick(db):
