@@ -64,9 +64,8 @@ def test_single_profile_enforced(db):
 
 
 def test_enabled_source_requires_reviewed_policy(db):
-    make_source(db, state=SourceState.ENABLED, policy_status=PolicyStatus.UNREVIEWED)
     with pytest.raises(IntegrityError):
-        db.flush()
+        make_source(db, state=SourceState.ENABLED, policy_status=PolicyStatus.UNREVIEWED)
 
 
 def test_enum_values_are_checked(db):
@@ -126,9 +125,8 @@ def test_comparison_rejects_duplicate_vacancy(db):
 
 
 def test_salary_order_constraint(db):
-    make_vacancy(db, salary_min=5_000_000, salary_max=1_000_000)
     with pytest.raises(IntegrityError):
-        db.flush()
+        make_vacancy(db, salary_min=5_000_000, salary_max=1_000_000)
 
 
 def test_vacancy_full_text_search(db):
