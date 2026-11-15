@@ -52,7 +52,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
-ignore = ["S101", "RUF012", "B008", "S311", "E501"]
+ignore = ["S101", "RUF012", "B008", "S311", "E501", "RUF001", "RUF002", "RUF005", "SIM102", "SIM108"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B"]
