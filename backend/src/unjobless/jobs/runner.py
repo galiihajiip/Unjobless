@@ -315,7 +315,9 @@ def execute_run(
     return RunOutcome(run.id, run.status, new_versions)
 
 
-def _post_run_lifecycle(db: Session, source: Source, seen: set[int], unchanged: list[int], complete: bool) -> None:
+def _post_run_lifecycle(
+    db: Session, source: Source, seen: set[int], unchanged: list[int], complete: bool
+) -> None:
     """Re-confirm vacancies seen again unchanged; mark those missing from a complete listing uncertain."""
     from unjobless.intelligence import lifecycle
     from unjobless.intelligence.vacancies import vacancy_for_document
