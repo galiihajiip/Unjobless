@@ -24,11 +24,12 @@ DEFAULT_LEXICON: dict[str, list[str]] = {
         r"\bopen recruitment\b", r"\boprec\b", r"\bjoin our team\b", r"\bjoin us\b", r"\bopen position", r"\bjob opening",
         r"\bvacanc(y|ies)\b", r"\bapply now\b", r"\bdaftar sekarang\b", r"\bsegera daftar", r"\bwe are looking for\b",
         r"\blooking for (an? )?\w+", r"\bdicari\b", r"\bdibutuhkan\b", r"\bmembutuhkan\b", r"\bopportunity to join\b",
-        r"\bopen (internship|magang)\b", r"\bbuka magang\b", r"\binternship (opportunity|program|position)\b", r"\bmagang (di|batch)\b",
+        r"\bopen (internship|magang)\b", r"\bbuka magang\b", r"\bwanted\b", r"\b(lagi |sedang )?butuh\b", r"\bnew grad(uate)? roles?\b", r"\binternship (opportunity|program|position)\b", r"\bmagang (di|batch)\b",
     ],
     "structure": [
         r"\b(requirements?|qualifications?|kualifikasi|persyaratan|syarat)\b", r"\b(job ?desc(ription)?|deskripsi pekerjaan|tanggung jawab|responsibilit(y|ies))\b",
-        r"\b(benefits?|fasilitas|keuntungan)\b", r"\b(how to apply|cara (melamar|daftar|mendaftar)|tata cara)\b", r"\b(deadline|batas akhir|closing date)\b",
+        r"\b(benefits?|fasilitas|keuntungan)\b", r"\b(how to apply|cara (melamar|daftar|mendaftar)|tata cara)\b", r"\b(deadline|batas akhir|closing date|paling lambat)\b",
+        r"\b(you will|you'll|what you('ll| will) do|anda akan|kamu akan)\b", r"\b(durasi|duration|lokasi|location|penempatan|placement)\s*:?", r"\b(usia|age)\s+\d",
     ],
     "apply_path": [r"https?://", r"\b[\w.+-]+@[\w-]+\.[\w.]+", r"\blink (di|in) bio\b", r"\bkirim (cv|lamaran)\b", r"\bsend (your )?(cv|resume)\b", r"\bapply (via|at|here|through)\b", r"\bdaftar (via|di|melalui)\b"],
     "referral": [
@@ -38,14 +39,14 @@ DEFAULT_LEXICON: dict[str, list[str]] = {
     "future": [
         r"\bnext month\b", r"\bbulan depan\b", r"\btahun depan\b", r"\bakan (segera )?(buka|dibuka|membuka)\b", r"\bcoming soon\b",
         r"\bsegera dibuka\b", r"\brencananya\b", r"\bmaybe\b", r"\bmungkin\b", r"\bkayaknya\b", r"\bkatanya\b", r"\brumou?rs?\b", r"\bplanning to (hire|open)\b",
-        r"\bwill (be )?(hiring|open)", r"\bsoon\b",
+        r"\bwill (be )?(hiring|open)", r"\bsoon\b", r"\bmight\b", r"\bheard (from|that)\b", r"\bnothing official\b", r"\bbelum (ada )?(resmi|official)\b", r"\bbakal\b", r"\bnanti (aku|saya) kabarin\b",
     ],
     "question": [
         r"\bada (yang )?(tahu|tau|info)\b", r"\banyone (know|knows|here)\b", r"\bis \w+ (still )?hiring\b", r"\b(lagi|masih) buka\b.*\?",
-        r"\bapakah\b.*\?", r"\bgimana (cara|caranya)\b", r"\bdoes anyone\b", r"\bany(one)? (info|leads?)\b", r"\bpunya info\b",
+        r"\bapakah\b.*\?", r"\bgimana (cara|caranya)\b", r"\bdoes anyone\b", r"\bhas anyone\b", r"\bany(one)? (info|leads?)\b", r"\bpunya info\b", r"\bhow long did\b",
     ],
     "review": [
-        r"\bpengalaman (magang|kerja|interview|wawancara)\b", r"\bmy (internship|interview|work) experience\b", r"\b(i|we) (worked|interned) at\b",
+        r"\bpengalaman (magang|kerja|interview|wawancara)\b", r"\bmy (internship|interview|work) experience\b", r"\b(i|we)? ?(worked|interned) at\b", r"\bworkload\b", r"\bgood pay\b", r"\bmanagement (changed|is|was)\b", r"\bcerita\b.*\bpengalaman\b",
         r"\bselama (magang|kerja) di\b", r"\btoxic\b", r"\bgaji (telat|kecil|ga dibayar)\b", r"\breview\b", r"\binterview (was|process|experience)\b",
         r"\bproses (rekrutmen|seleksi|interview)\b.*\b(lama|ribet|ghosting|ghosted)\b", r"\bghost(ed|ing)\b", r"\bunderpaid\b", r"\boverworked\b",
         r"\b(great|terrible|awful|amazing|bad|good) (place|company|culture|mentor)", r"\bculture (is|was)\b", r"\bkultur(nya)?\b",
@@ -56,7 +57,7 @@ DEFAULT_LEXICON: dict[str, list[str]] = {
     "trend": [r"\bhiring freeze\b", r"\blayoffs?\b", r"\bphk\b", r"\bjob market\b", r"\bpasar kerja\b", r"\btren\b", r"\btrend\b", r"\bunemployment\b", r"\bpengangguran\b"],
     "career": [
         r"\bintern(ship)?s?\b", r"\bmagang\b", r"\bjobs?\b", r"\bkerja\b", r"\bkarir\b", r"\bcareers?\b", r"\bhiring\b", r"\bloker\b", r"\blowongan\b",
-        r"\brecruit", r"\brekrut", r"\bcv\b", r"\bresume\b", r"\binterview\b", r"\bposisi\b", r"\bposition\b", r"\bvacanc", r"\btrainee\b", r"\bfreelance\b",
+        r"\brecruit", r"\brekrut", r"\bcv\b", r"\bresume\b", r"\binterview\b", r"\bposisi\b", r"\bposition\b", r"\bvacanc", r"\btrainee\b", r"\bfreelance\b", r"\broles?\b", r"\bnew grad", r"\blamaran\b", r"\bkantor\b", r"\bfresh ?grad", r"\bgraduates?\b",
     ],
     "irrelevant": [r"\bthe internship \(2013\)", r"\bmovie\b", r"\bfilm\b", r"\bnetflix\b", r"\bnonton\b", r"\bdrama\b", r"\bepisode\b"],
 }
@@ -156,7 +157,7 @@ def classify(text: str, *, title: str | None = None, structured: bool = False, t
     expired = bool(deadline and deadline.value < today)
     if expired:
         flags.append("deadline_passed")
-    if n["career"] == 0 and n["hiring"] == 0 and n["scholarship"] == 0 and n["program"] == 0:
+    if sum(v for g, v in n.items() if g not in ("irrelevant", "apply_path", "structure")) == 0:
         return SignalResult(C.IRRELEVANT, [], ST.NOT_AN_OPPORTUNITY, 0.85, "No career-related terms found.", [], [], [], V.REJECTED_AS_IRRELEVANT, n)
     if n["irrelevant"] and n["hiring"] == 0 and n["structure"] == 0:
         return SignalResult(C.IRRELEVANT, [], ST.NOT_AN_OPPORTUNITY, 0.75, "Career words used in an unrelated context (e.g. entertainment).", ["unrelated_usage"], [], [_excerpt(full, h["irrelevant"][0])], V.REJECTED_AS_IRRELEVANT, n)
@@ -184,6 +185,9 @@ def classify(text: str, *, title: str | None = None, structured: bool = False, t
         if not role:
             flags.append("role_unspecified")
         return result(C.REFERRAL_SIGNAL, ST.REFERRAL_AVAILABLE, 0.7 + (0.1 if role else 0), "Someone offers or requests a referral.", V.POTENTIAL_LEAD)
+    if n["campaign"] and future and not explicit_open_call(h):
+        flags.append("details_pending")
+        return result(C.RECRUITMENT_CAMPAIGN, ST.RECRUITMENT_BATCH, 0.55, "Recruitment programme announced; details or dates still pending.", V.POTENTIAL_LEAD)
     if future and not (structure >= 2 and apply_path):
         flags.append("unconfirmed_future_opening")
         return result(C.INFORMAL_OPPORTUNITY_LEAD, ST.FUTURE_HIRING_INTENT, 0.6, "Mentions possible or future hiring without confirmation.", V.POTENTIAL_LEAD)
@@ -194,7 +198,7 @@ def classify(text: str, *, title: str | None = None, structured: bool = False, t
     if n["trend"] and not (structure >= 1 and apply_path):
         return result(C.CAREER_TREND, ST.NOT_AN_OPPORTUNITY, 0.65, "Discusses the job market or hiring trends.", V.REJECTED_AS_IRRELEVANT)
 
-    posting_shape = structure >= 2 and apply_path and role is not None
+    posting_shape = apply_path and role is not None and (structure >= 2 or (structure >= 1 and role[1] == "EXPLICIT" and bool(title)))
     if explicit or structured or posting_shape:
         if n["campaign"]:
             secondary.append(C.RECRUITMENT_CAMPAIGN)
@@ -215,11 +219,19 @@ def classify(text: str, *, title: str | None = None, structured: bool = False, t
     return result(C.CAREER_TREND, ST.NOT_AN_OPPORTUNITY, 0.4, "Career-related content without an opportunity.", V.REJECTED_AS_IRRELEVANT)
 
 
+def explicit_open_call(h: dict[str, list[re.Match[str]]]) -> bool:
+    return any(re.search(r"(sudah dibuka|now open|is open|apply now|daftar sekarang)", m.group(0), re.I) for m in h.get("hiring", []))
+
+
 ROLE_RE = re.compile(
     r"\b((?:senior |junior |sr\.? |jr\.? )?(?:[A-Z][\w/&+.-]*\s){0,4}"
-    r"(?:Intern|Internship|Engineer|Developer|Analyst|Designer|Manager|Specialist|Officer|Staff|Assistant|Associate|Consultant|Scientist|Writer|Marketing|Admin|Trainee|Programmer|Accountant|Executive|Coordinator|Lead))\b"
+    r"(?:Intern|Internship|Engineer|Developer|Analyst|Designer|Manager|Specialist|Officer|Staff|Assistant|Associate|Consultant|Scientist|Writer|Marketing|Admin|Trainee|Programmer|Accountant|Executive|Coordinator|Lead|Barista|Cashier|Kasir|Driver|Teller|Akuntansi|Analis))\b"
 )
-ID_ROLE_RE = re.compile(r"\b(?:posisi|lowongan|magang|loker|dicari|dibutuhkan|hiring)\s*:?\s*([A-Za-z][\w /&+.-]{3,60}?)(?=[\n,.;!()]|\s-\s|$)", re.I)
+ID_def explicit_open_call(h: dict[str, list[re.Match[str]]]) -> bool:
+    return any(re.search(r"(sudah dibuka|now open|is open|apply now|daftar sekarang)", m.group(0), re.I) for m in h.get("hiring", []))
+
+
+ROLE_RE = re.compile(r"\b(?:posisi|lowongan|magang|loker|dicari|dibutuhkan|hiring)\s*:?\s*([A-Za-z][\w /&+.-]{3,60}?)(?=[\n,.;!()]|\s-\s|$)", re.I)
 
 
 def _role_guess(title: str | None, text: str) -> tuple[str, str, str] | None:
