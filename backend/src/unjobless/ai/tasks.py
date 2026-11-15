@@ -54,7 +54,10 @@ def render_user(payload: dict[str, Any]) -> str:
     parts = []
     trusted = {k: v for k, v in payload.items() if not k.endswith("_untrusted")}
     if trusted:
-        parts.append("Context (trusted, from the owner's own records):\n" + json.dumps(trusted, ensure_ascii=False, indent=1, default=str))
+        parts.append(
+            "Context (trusted, from the owner's own records):\n"
+            + json.dumps(trusted, ensure_ascii=False, indent=1, default=str)
+        )
     for k, v in payload.items():
         if k.endswith("_untrusted"):
             parts.append(untrusted(k.removesuffix("_untrusted"), str(v)))
