@@ -21,7 +21,14 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from unjobless.db.models import CareerPreferences, JobLocation, JobRequirement, JobSkill, JobVacancy, MatchAnalysis
+from unjobless.db.models import (
+    CareerPreferences,
+    JobLocation,
+    JobRequirement,
+    JobSkill,
+    JobVacancy,
+    MatchAnalysis,
+)
 from unjobless.domain.state_machines import OPEN_STATUSES
 from unjobless.intelligence import normalize as N
 from unjobless.intelligence.companies import normalize_company
