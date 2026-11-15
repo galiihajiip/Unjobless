@@ -11,7 +11,7 @@ PW = "correct horse battery staple"
 
 @pytest.fixture
 def client(engine, clean_db):
-    return TestClient(create_app())
+    return TestClient(create_app(), client=("203.0.113.5", 50000))
 
 
 def bootstrap(client, **kw):
@@ -30,7 +30,7 @@ def test_state_before_bootstrap(client):
 def test_bootstrap_once_then_rejected(client):
     assert bootstrap(client).status_code == 201
     assert client.get("/api/auth/state").json()["authenticated"] is True
-    fresh = TestClient(client.app)
+    fresh = TestClient(client.app, client=("203.0.113.6", 50000))
     r = bootstrap(fresh)
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "already_bootstrapped"
@@ -87,7 +87,7 @@ def test_private_routes_require_auth_and_csrf(client):
 
 
 def test_every_private_route_rejects_anonymous(client):
-    anon = TestClient(client.app)
+    anon = TestClient(client.app, client=("203.0.113.6", 50000))
     router = build_private_router()
     checked = 0
     for route in router.routes:
@@ -101,7 +101,7 @@ def test_every_private_route_rejects_anonymous(client):
 
 def test_password_change_revokes_sessions(client):
     bootstrap(client)
-    other = TestClient(client.app)
+    other = TestClient(client.app, client=("203.0.113.6", 50000))
     other.post("/api/auth/login", json={"password": PW})
     r = client.post("/api/auth/password", json={"current_password": PW, "new_password": "another long passphrase"}, headers=csrf(client))
     assert r.status_code == 200
