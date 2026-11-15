@@ -24,8 +24,11 @@ def _ensure_open() -> Any:
     app = get_app()
     with _lock:
         if not _opened:
+            import atexit
+
             app.open()
             _opened = True
+            atexit.register(app.close)
     return app
 
 
