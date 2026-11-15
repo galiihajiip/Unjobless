@@ -35,7 +35,11 @@ def _ctx(db: Session, item: ImportItem) -> tuple[RawSourceVersion, RawSourceDocu
 
 
 def _require_review(item: ImportItem) -> None:
-    if item.status not in (ImportItemStatus.NEEDS_REVIEW, ImportItemStatus.DUPLICATE, ImportItemStatus.REJECTED):
+    if item.status not in (
+        ImportItemStatus.NEEDS_REVIEW,
+        ImportItemStatus.DUPLICATE,
+        ImportItemStatus.REJECTED,
+    ):
         raise ValidationFailed(f"Item is {item.status.value.lower()}; it must be ready for review first.")
 
 
@@ -47,7 +51,14 @@ def corrected_extraction(item: ImportItem, corrections: dict[str, Any] | None) -
         base[k] = v
         evidence = [e for e in evidence if e.get("field") != k]
         if v not in (None, [], "UNKNOWN", ""):
-            evidence.append({"field": k, "excerpt": f"[owner correction] {str(v)[:300]}", "origin": "INFERRED", "confidence": 1.0})
+            evidence.append(
+                {
+                    "field": k,
+                    "excerpt": f"[owner correction] {str(v)[:300]}",
+                    "origin": "INFERRED",
+                    "confidence": 1.0,
+                }
+            )
     base["evidence"] = evidence
     base["is_job_posting"] = True
     return JobExtraction.model_validate(base)
@@ -59,12 +70,23 @@ def save_corrections(db: Session, item: ImportItem, corrections: dict[str, Any])
     payload = dict(item.extraction or {})
     payload["extraction"] = x.model_dump(mode="json")
     item.extraction = payload
-    item.user_corrections = {**(item.user_corrections or {}), **{k: v for k, v in corrections.items() if k in EDITABLE}}
-    audit(db, "import.corrected", target_type="import_item", target_id=item.id, details={"fields": sorted(corrections)})
+    item.user_corrections = {
+        **(item.user_corrections or {}),
+        **{k: v for k, v in corrections.items() if k in EDITABLE},
+    }
+    audit(
+        db,
+        "import.corrected",
+        target_type="import_item",
+        target_id=item.id,
+        details={"fields": sorted(corrections)},
+    )
     return item
 
 
-def confirm_as_vacancy(db: Session, item: ImportItem, corrections: dict[str, Any] | None = None) -> JobVacancy:
+def confirm_as_vacancy(
+    db: Session, item: ImportItem, corrections: dict[str, Any] | None = None
+) -> JobVacancy:
     """Owner confirms this is a real, open vacancy. The only path from an import to VERIFIED_OPEN."""
     _require_review(item)
     version, doc, src = _ctx(db, item)
@@ -73,8 +95,16 @@ def confirm_as_vacancy(db: Session, item: ImportItem, corrections: dict[str, Any
         raise ValidationFailed("A vacancy needs a title. Add one before confirming.")
     text = version_text(version)
     v = create_vacancy(
-        db, x=x, source=src, document=doc, version=version, source_text=text, status=V.VERIFIED_OPEN,
-        classification=OpportunityClassification.DIRECT_VACANCY, actor=Actor.USER, reason="Confirmed by the owner during import review.",
+        db,
+        x=x,
+        source=src,
+        document=doc,
+        version=version,
+        source_text=text,
+        status=V.VERIFIED_OPEN,
+        classification=OpportunityClassification.DIRECT_VACANCY,
+        actor=Actor.USER,
+        reason="Confirmed by the owner during import review.",
     )
     _mark_user_fields(db, v, corrections)
     lifecycle.apply_deadline_rule(db, v)
@@ -85,7 +115,13 @@ def confirm_as_vacancy(db: Session, item: ImportItem, corrections: dict[str, Any
     if item.status == ImportItemStatus.NEEDS_REVIEW:
         IMPORT_ITEM.check(item.status, ImportItemStatus.SAVED)
     item.status = ImportItemStatus.SAVED
-    audit(db, "import.confirmed_vacancy", target_type="import_item", target_id=item.id, details={"vacancy_id": v.id})
+    audit(
+        db,
+        "import.confirmed_vacancy",
+        target_type="import_item",
+        target_id=item.id,
+        details={"vacancy_id": v.id},
+    )
     refresh_batch_status(db, item.batch_id)
     return v
 
@@ -106,12 +142,20 @@ def confirm_as_lead(db: Session, item: ImportItem) -> Any:
     version, _doc, _src = _ctx(db, item)
     text = version_text(version)
     sig = classify(text, title=version.title)
-    if sig.primary in (OpportunityClassification.IRRELEVANT, OpportunityClassification.EMPLOYER_DISCUSSION, OpportunityClassification.EMPLOYER_REVIEW, OpportunityClassification.CAREER_TREND, OpportunityClassification.DIRECT_VACANCY):
+    if sig.primary in (
+        OpportunityClassification.IRRELEVANT,
+        OpportunityClassification.EMPLOYER_DISCUSSION,
+        OpportunityClassification.EMPLOYER_REVIEW,
+        OpportunityClassification.CAREER_TREND,
+        OpportunityClassification.DIRECT_VACANCY,
+    ):
         sig.primary = OpportunityClassification.INFORMAL_OPPORTUNITY_LEAD
     s = create_signal(db, version, sig, source_text=text, status=V.POTENTIAL_LEAD)
     item.result_signal_id = s.id
     item.status = ImportItemStatus.SAVED
-    audit(db, "import.confirmed_lead", target_type="import_item", target_id=item.id, details={"signal_id": s.id})
+    audit(
+        db, "import.confirmed_lead", target_type="import_item", target_id=item.id, details={"signal_id": s.id}
+    )
     refresh_batch_status(db, item.batch_id)
     return s
 
