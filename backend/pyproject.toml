@@ -71,6 +71,7 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+pythonpath = ["."]
 markers = [
   "db: requires the PostgreSQL test database",
 ]
