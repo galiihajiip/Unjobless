@@ -14,15 +14,28 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from unjobless.db.models import JobVacancy, RawSourceDocument, RawSourceVersion, SentimentAnalysis, TopicObservation, TrendObservation
+from unjobless.db.models import (
+    JobVacancy,
+    RawSourceDocument,
+    RawSourceVersion,
+    SentimentAnalysis,
+    TopicObservation,
+    TrendObservation,
+)
 from unjobless.domain.enums import Sentiment, SentimentTarget
 
 MIN_SAMPLE = 5
 
-POS = [r"\b(great|good|amazing|supportive|helpful|kind|love[d]?|recommend(ed)?|fair|friendly|learned a lot|belajar banyak|seru|bagus|baik|ramah|suportif|nyaman|worth it|mantap|keren)\b"]
-NEG = [r"\b(toxic|terrible|awful|bad|worst|underpaid|overworked|ghost(ed|ing)?|unfair|rude|stress(ful)?|burn ?out|telat|kecil banget|jelek|buruk|parah|capek|lembur terus|gak dibayar|nggak dibayar|ribet|lama banget|kecewa)\b"]
+POS = [
+    r"\b(great|good|amazing|supportive|helpful|kind|love[d]?|recommend(ed)?|fair|friendly|learned a lot|belajar banyak|seru|bagus|baik|ramah|suportif|nyaman|worth it|mantap|keren)\b"
+]
+NEG = [
+    r"\b(toxic|terrible|awful|bad|worst|underpaid|overworked|ghost(ed|ing)?|unfair|rude|stress(ful)?|burn ?out|telat|kecil banget|jelek|buruk|parah|capek|lembur terus|gak dibayar|nggak dibayar|ribet|lama banget|kecewa)\b"
+]
 NEGATION = re.compile(r"\b(not|no|never|tidak|nggak|gak|ga|bukan|kurang)\s+$", re.I)
-SARCASM = re.compile(r"(/s\b|\byeah right\b|\bas if\b|\bwkwk|\bhaha\b.*\b(great|mantap)\b|\bmantap\b.*\b(telat|toxic)\b)", re.I)
+SARCASM = re.compile(
+    r"(/s\b|\byeah right\b|\bas if\b|\bwkwk|\bhaha\b.*\b(great|mantap)\b|\bmantap\b.*\b(telat|toxic)\b)", re.I
+)
 ASPECTS: dict[SentimentTarget, str] = {
     SentimentTarget.RECRUITMENT_PROCESS: r"(recruit|rekrut|application|lamaran|seleksi|hiring process|proses|hr\b|ghost)",
     SentimentTarget.INTERVIEW: r"(interview|wawancara|user interview|technical test)",
@@ -92,9 +105,17 @@ def analyze_sentiment(text: str) -> list[SentimentObs]:
             prev = out.get(t)
             if prev and prev.polarity != pol:
                 pol2 = Sentiment.MIXED
-                out[t] = SentimentObs(t, pol2, min(prev.confidence, conf), prev.sarcasm_uncertain or sarcasm, prev.excerpt)
+                out[t] = SentimentObs(
+                    t, pol2, min(prev.confidence, conf), prev.sarcasm_uncertain or sarcasm, prev.excerpt
+                )
             elif not prev or conf > prev.confidence:
-                out[t] = SentimentObs(t, Sentiment.UNCERTAIN if sarcasm and conf < 0.4 else pol, round(conf, 2), sarcasm, sent[:400])
+                out[t] = SentimentObs(
+                    t,
+                    Sentiment.UNCERTAIN if sarcasm and conf < 0.4 else pol,
+                    round(conf, 2),
+                    sarcasm,
+                    sent[:400],
+                )
     return list(out.values())
 
 
@@ -108,7 +129,16 @@ def detect_topics(text: str) -> list[tuple[str, float, str]]:
     return out
 
 
-def store_observations(db: Session, version: RawSourceVersion, text: str, *, company_id: int | None, source_id: int | None, first_party: bool, ai_payload: dict[str, Any] | None = None) -> tuple[int, int]:
+def store_observations(
+    db: Session,
+    version: RawSourceVersion,
+    text: str,
+    *,
+    company_id: int | None,
+    source_id: int | None,
+    first_party: bool,
+    ai_payload: dict[str, Any] | None = None,
+) -> tuple[int, int]:
     db.execute(delete(SentimentAnalysis).where(SentimentAnalysis.raw_version_id == version.id))
     db.execute(delete(TopicObservation).where(TopicObservation.raw_version_id == version.id))
     observed = version.source_published_at or version.collected_at
@@ -118,25 +148,57 @@ def store_observations(db: Session, version: RawSourceVersion, text: str, *, com
     if ai_payload:
         method = "ai"
         obs = [
-            SentimentObs(SentimentTarget(s["target"]), Sentiment(s["polarity"]), float(s["confidence"]), bool(s["sarcasm_uncertain"]), s["excerpt"])
-            for s in ai_payload.get("sentiments", []) if s.get("excerpt") and s["excerpt"] in text
+            SentimentObs(
+                SentimentTarget(s["target"]),
+                Sentiment(s["polarity"]),
+                float(s["confidence"]),
+                bool(s["sarcasm_uncertain"]),
+                s["excerpt"],
+            )
+            for s in ai_payload.get("sentiments", [])
+            if s.get("excerpt") and s["excerpt"] in text
         ]
     for o in obs:
-        db.add(SentimentAnalysis(
-            raw_version_id=version.id, source_id=source_id, company_id=company_id, target=o.target, polarity=o.polarity,
-            confidence=o.confidence, sarcasm_uncertain=o.sarcasm_uncertain, is_first_party=first_party,
-            language=version.language, evidence_excerpt=o.excerpt, method=method, observed_at=observed,
-        ))
+        db.add(
+            SentimentAnalysis(
+                raw_version_id=version.id,
+                source_id=source_id,
+                company_id=company_id,
+                target=o.target,
+                polarity=o.polarity,
+                confidence=o.confidence,
+                sarcasm_uncertain=o.sarcasm_uncertain,
+                is_first_party=first_party,
+                language=version.language,
+                evidence_excerpt=o.excerpt,
+                method=method,
+                observed_at=observed,
+            )
+        )
         n_s += 1
     topics = detect_topics(text)
     if ai_payload:
-        topics += [(t["topic"][:60], float(t["confidence"]), t["excerpt"]) for t in ai_payload.get("topics", []) if t.get("excerpt") in text]
+        topics += [
+            (t["topic"][:60], float(t["confidence"]), t["excerpt"])
+            for t in ai_payload.get("topics", [])
+            if t.get("excerpt") in text
+        ]
     seen = set()
     for topic, conf, ex in topics:
         if topic in seen:
             continue
         seen.add(topic)
-        db.add(TopicObservation(raw_version_id=version.id, source_id=source_id, company_id=company_id, topic=topic, confidence=conf, evidence_excerpt=ex[:1000], observed_at=observed))
+        db.add(
+            TopicObservation(
+                raw_version_id=version.id,
+                source_id=source_id,
+                company_id=company_id,
+                topic=topic,
+                confidence=conf,
+                evidence_excerpt=ex[:1000],
+                observed_at=observed,
+            )
+        )
     db.flush()
     return n_s, len(seen)
 
@@ -151,25 +213,71 @@ def refresh_trends(db: Session, *, weeks: int = 12, today: date | None = None) -
         ws = start + timedelta(weeks=w)
         we = ws + timedelta(days=6)
         topic_rows = db.execute(
-            select(TopicObservation.topic, func.count(), func.count(func.distinct(TopicObservation.source_id)), func.count(func.distinct(TopicObservation.company_id)))
-            .where(func.date(TopicObservation.observed_at).between(ws, we)).group_by(TopicObservation.topic)
+            select(
+                TopicObservation.topic,
+                func.count(),
+                func.count(func.distinct(TopicObservation.source_id)),
+                func.count(func.distinct(TopicObservation.company_id)),
+            )
+            .where(func.date(TopicObservation.observed_at).between(ws, we))
+            .group_by(TopicObservation.topic)
         ).all()
         for topic, c, us, uc in topic_rows:
-            db.add(TrendObservation(metric="topic_mentions", dimension=topic, window_start=ws, window_end=we, count=c, unique_sources=us, unique_companies=uc))
+            db.add(
+                TrendObservation(
+                    metric="topic_mentions",
+                    dimension=topic,
+                    window_start=ws,
+                    window_end=we,
+                    count=c,
+                    unique_sources=us,
+                    unique_companies=uc,
+                )
+            )
             n += 1
         vc = db.execute(
-            select(func.count(), func.count(func.distinct(JobVacancy.company_id))).where(func.date(JobVacancy.first_seen_at).between(ws, we), JobVacancy.merged_into_id.is_(None))
+            select(func.count(), func.count(func.distinct(JobVacancy.company_id))).where(
+                func.date(JobVacancy.first_seen_at).between(ws, we), JobVacancy.merged_into_id.is_(None)
+            )
         ).one()
         vs = db.execute(
-            select(func.count(func.distinct(RawSourceDocument.source_id))).where(func.date(RawSourceDocument.first_collected_at).between(ws, we))
+            select(func.count(func.distinct(RawSourceDocument.source_id))).where(
+                func.date(RawSourceDocument.first_collected_at).between(ws, we)
+            )
         ).scalar_one()
-        db.add(TrendObservation(metric="new_vacancies", dimension="all", window_start=ws, window_end=we, count=vc[0], unique_sources=vs, unique_companies=vc[1]))
+        db.add(
+            TrendObservation(
+                metric="new_vacancies",
+                dimension="all",
+                window_start=ws,
+                window_end=we,
+                count=vc[0],
+                unique_sources=vs,
+                unique_companies=vc[1],
+            )
+        )
         sent = db.execute(
-            select(SentimentAnalysis.polarity, func.count(), func.count(func.distinct(SentimentAnalysis.source_id)), func.count(func.distinct(SentimentAnalysis.company_id)))
-            .where(func.date(SentimentAnalysis.observed_at).between(ws, we)).group_by(SentimentAnalysis.polarity)
+            select(
+                SentimentAnalysis.polarity,
+                func.count(),
+                func.count(func.distinct(SentimentAnalysis.source_id)),
+                func.count(func.distinct(SentimentAnalysis.company_id)),
+            )
+            .where(func.date(SentimentAnalysis.observed_at).between(ws, we))
+            .group_by(SentimentAnalysis.polarity)
         ).all()
         for pol, c, us, uc in sent:
-            db.add(TrendObservation(metric="sentiment", dimension=pol.value, window_start=ws, window_end=we, count=c, unique_sources=us, unique_companies=uc))
+            db.add(
+                TrendObservation(
+                    metric="sentiment",
+                    dimension=pol.value,
+                    window_start=ws,
+                    window_end=we,
+                    count=c,
+                    unique_sources=us,
+                    unique_companies=uc,
+                )
+            )
         n += 1
     db.flush()
     return n
@@ -187,4 +295,8 @@ def describe_change(series: list[int]) -> dict[str, Any]:
     low = (a + b) < MIN_SAMPLE * 2
     if abs(change) < 0.25 or low:
         return {"direction": "stable_or_unclear", "change": round(change, 2), "low_sample": low}
-    return {"direction": "increase" if change > 0 else "decrease", "change": round(change, 2), "low_sample": low}
+    return {
+        "direction": "increase" if change > 0 else "decrease",
+        "change": round(change, 2),
+        "low_sample": low,
+    }
