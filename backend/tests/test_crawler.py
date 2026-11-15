@@ -1,7 +1,5 @@
 """Career-page crawler against local fixture HTML (no live sites)."""
 
-import json
-
 import pytest
 
 from tests.helpers import FakeFetcher, approved_source
