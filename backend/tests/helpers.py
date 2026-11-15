@@ -26,7 +26,16 @@ class FakeFetcher:
         self.calls.append(url)
         status, ctype, body = self.routes.get(url, (404, "text/plain", b""))
         b = body.encode() if isinstance(body, str) else body
-        return FetchResult(url=url, requested_url=url, status_code=status, content_type=ctype, charset="utf-8", body=b, truncated=False, headers={})
+        return FetchResult(
+            url=url,
+            requested_url=url,
+            status_code=status,
+            content_type=ctype,
+            charset="utf-8",
+            body=b,
+            truncated=False,
+            headers={},
+        )
 
     def close(self) -> None:
         pass
@@ -37,7 +46,9 @@ def fixture_json(name: str) -> bytes:
 
 
 def approved_source(db, *, key: str, connector_type: str, config: dict[str, Any], domain: str | None = None):
-    s = service.create_source(db, key=key, name=key, connector_type=connector_type, config=config, domain=domain)
+    s = service.create_source(
+        db, key=key, name=key, connector_type=connector_type, config=config, domain=domain
+    )
     service.review_policy(db, s, decision=PolicyStatus.APPROVED, terms_notes="test")
     service.change_state(db, s, SourceState.ENABLED)
     return s
