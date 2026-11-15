@@ -88,7 +88,11 @@ class ValidatedTarget:
 
 
 def validate_url(
-    url: str, *, resolver: Resolver | None = None, allowed_ports: Iterable[int] | None = None
+    url: str,
+    *,
+    resolver: Resolver | None = None,
+    allowed_ports: Iterable[int] | None = None,
+    resolve: bool = True,
 ) -> ValidatedTarget:
     """Static + DNS validation. Raises BlockedURL with a user-presentable reason."""
     if not isinstance(url, str) or len(url) > 2048:
