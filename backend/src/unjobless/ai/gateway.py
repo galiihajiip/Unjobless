@@ -124,11 +124,10 @@ def _price(db: Session, provider: AIProviderConfig, model: str) -> tuple[float, 
 
 def spent_today(db: Session) -> float:
     since = utcnow() - timedelta(days=1)
-    return float(
-        db.execute(
-            select(func.coalesce(func.sum(AIUsageEvent.cost_estimate), 0.0)).where(AIUsageEvent.at > since)
-        ).scalar_one()
-    )
+    total = db.execute(
+        select(func.coalesce(func.sum(AIUsageEvent.cost_estimate), 0.0)).where(AIUsageEvent.at > since)
+    ).scalar_one()
+    return float(total or 0.0)
 
 
 def _ensure_prompt_version(db: Session, t: AITask) -> None:
