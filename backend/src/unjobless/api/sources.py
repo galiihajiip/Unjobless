@@ -20,7 +20,13 @@ from unjobless.db.models import (
 )
 from unjobless.domain.enums import PolicyStatus, RunItemOutcome, RunTrigger, SourceState
 from unjobless.jobs.queue import defer
-from unjobless.jobs.runner import active_run, cancel_run, enqueue_source_run, reset_source_runs_for_disable, run_summary
+from unjobless.jobs.runner import (
+    active_run,
+    cancel_run,
+    enqueue_source_run,
+    reset_source_runs_for_disable,
+    run_summary,
+)
 from unjobless.sources import service
 from unjobless.sources.registry import all_connectors
 
@@ -64,7 +70,10 @@ def to_out(db: DB, s: Source, with_runs: bool = True) -> SourceOut:
         act = active_run(db, s.id)
         out.active_run = run_summary(act) if act else None
         last = db.execute(
-            select(SourceRun).where(SourceRun.source_id == s.id, SourceRun.finished_at.is_not(None)).order_by(SourceRun.finished_at.desc()).limit(1)
+            select(SourceRun)
+            .where(SourceRun.source_id == s.id, SourceRun.finished_at.is_not(None))
+            .order_by(SourceRun.finished_at.desc())
+            .limit(1)
         ).scalar_one_or_none()
         out.last_run = run_summary(last) if last else None
         agg = db.execute(
@@ -146,7 +155,10 @@ def connectors() -> list[dict[str, Any]]:
                     "health_check": info.supports_health_check,
                 },
                 "content_types": list(info.content_types),
-                "retry": {"max_attempts": info.retry.max_attempts, "base_delay_seconds": info.retry.base_delay_seconds},
+                "retry": {
+                    "max_attempts": info.retry.max_attempts,
+                    "base_delay_seconds": info.retry.base_delay_seconds,
+                },
                 "attribution": info.attribution,
                 "freshness_strategy": info.freshness_strategy,
                 "terms_review": info.terms_review,
@@ -196,7 +208,16 @@ def remove_exclusion(exclusion_id: int, db: DB) -> dict[str, str]:
 @router.get("/fetch-log")
 def fetch_log(db: DB, limit: int = Query(50, le=200)) -> list[dict[str, Any]]:
     rows = db.execute(select(FetchLog).order_by(FetchLog.at.desc()).limit(limit)).scalars()
-    return [{"host": r.host, "outcome": r.outcome, "reason": r.reason, "status_code": r.status_code, "at": r.at.isoformat()} for r in rows]
+    return [
+        {
+            "host": r.host,
+            "outcome": r.outcome,
+            "reason": r.reason,
+            "status_code": r.status_code,
+            "at": r.at.isoformat(),
+        }
+        for r in rows
+    ]
 
 
 @router.get("/{source_id}")
@@ -223,7 +244,9 @@ def policy_review(source_id: int, body: PolicyReviewIn, db: DB) -> SourceOut:
 @router.get("/{source_id}/policy-reviews")
 def policy_reviews(source_id: int, db: DB) -> list[dict[str, Any]]:
     rows = db.execute(
-        select(SourcePolicyReview).where(SourcePolicyReview.source_id == source_id).order_by(SourcePolicyReview.reviewed_at.desc())
+        select(SourcePolicyReview)
+        .where(SourcePolicyReview.source_id == source_id)
+        .order_by(SourcePolicyReview.reviewed_at.desc())
     ).scalars()
     return [
         {
@@ -297,12 +320,25 @@ def run_items(source_id: int, run_id: int, db: DB, failed_only: bool = False) ->
     if failed_only:
         q = q.where(SourceRunItem.outcome == RunItemOutcome.ERROR)
     rows = db.execute(q.order_by(SourceRunItem.id).limit(500)).scalars()
-    return [{"id": r.id, "external_id": r.external_id, "url": r.url, "outcome": r.outcome.value, "error": r.error, "raw_version_id": r.raw_version_id} for r in rows]
+    return [
+        {
+            "id": r.id,
+            "external_id": r.external_id,
+            "url": r.url,
+            "outcome": r.outcome.value,
+            "error": r.error,
+            "raw_version_id": r.raw_version_id,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/{source_id}/health-events")
 def health_events(source_id: int, db: DB) -> list[dict[str, Any]]:
     rows = db.execute(
-        select(SourceHealthEvent).where(SourceHealthEvent.source_id == source_id).order_by(SourceHealthEvent.at.desc()).limit(50)
+        select(SourceHealthEvent)
+        .where(SourceHealthEvent.source_id == source_id)
+        .order_by(SourceHealthEvent.at.desc())
+        .limit(50)
     ).scalars()
     return [{"health": r.health.value, "reason": r.reason, "at": r.at.isoformat()} for r in rows]
