@@ -31,13 +31,29 @@ TRUSTED_METHODS = {CollectionMethod.ATS_PUBLIC_API, CollectionMethod.OFFICIAL_AP
 
 
 def set_status(
-    db: Session, v: JobVacancy, to: V, *, reason: str, rule: str | None = None, actor: Actor = Actor.SYSTEM, at: datetime | None = None
+    db: Session,
+    v: JobVacancy,
+    to: V,
+    *,
+    reason: str,
+    rule: str | None = None,
+    actor: Actor = Actor.SYSTEM,
+    at: datetime | None = None,
 ) -> bool:
     if v.verification_status == to:
         return False
     if actor == Actor.SYSTEM:
         VERIFICATION.check(v.verification_status, to)
-    db.add(VacancyStatusHistory(vacancy_id=v.id, from_status=v.verification_status, to_status=to, reason=reason, rule=rule, actor=actor))
+    db.add(
+        VacancyStatusHistory(
+            vacancy_id=v.id,
+            from_status=v.verification_status,
+            to_status=to,
+            reason=reason,
+            rule=rule,
+            actor=actor,
+        )
+    )
     v.verification_status = to
     v.status_reason = reason
     now = at or utcnow()
@@ -74,18 +90,40 @@ def compute_freshness(v: JobVacancy, *, today: date | None = None) -> FreshnessS
 def apply_deadline_rule(db: Session, v: JobVacancy, *, today: date | None = None) -> None:
     today = today or utcnow().date()
     has_evidence = any(f == "application_deadline" for f in (v.field_meta or {}).get("evidenced_fields", []))
-    if v.application_deadline and v.application_deadline < today and v.verification_status not in (V.EXPIRED, V.CLOSED, V.REJECTED_AS_IRRELEVANT):
+    if (
+        v.application_deadline
+        and v.application_deadline < today
+        and v.verification_status not in (V.EXPIRED, V.CLOSED, V.REJECTED_AS_IRRELEVANT)
+    ):
         if has_evidence or (v.field_meta or {}).get("application_deadline", {}).get("origin") == "EXPLICIT":
             if VERIFICATION.allowed(v.verification_status, V.EXPIRED):
-                set_status(db, v, V.EXPIRED, reason=f"Explicit application deadline {v.application_deadline.isoformat()} has passed.", rule="deadline_passed")
+                set_status(
+                    db,
+                    v,
+                    V.EXPIRED,
+                    reason=f"Explicit application deadline {v.application_deadline.isoformat()} has passed.",
+                    rule="deadline_passed",
+                )
 
 
 def confirm_seen_in_trusted_listing(db: Session, v: JobVacancy, source: Source) -> None:
     v.last_seen_at = v.last_checked_at = utcnow()
     if source.collection_method in TRUSTED_METHODS and source.policy_status == PolicyStatus.APPROVED:
-        if v.verification_status in (V.NEW_UNREVIEWED, V.LIKELY_OPEN, V.STATUS_UNKNOWN, V.SOURCE_UNAVAILABLE, V.VERIFIED_OPEN):
+        if v.verification_status in (
+            V.NEW_UNREVIEWED,
+            V.LIKELY_OPEN,
+            V.STATUS_UNKNOWN,
+            V.SOURCE_UNAVAILABLE,
+            V.VERIFIED_OPEN,
+        ):
             if v.verification_status != V.VERIFIED_OPEN:
-                set_status(db, v, V.VERIFIED_OPEN, reason=f"Live in the {source.name} listing.", rule="live_in_trusted_listing")
+                set_status(
+                    db,
+                    v,
+                    V.VERIFIED_OPEN,
+                    reason=f"Live in the {source.name} listing.",
+                    rule="live_in_trusted_listing",
+                )
             else:
                 v.last_verified_at = utcnow()
     v.freshness = compute_freshness(v)
@@ -109,10 +147,26 @@ def mark_missing_from_complete_listing(db: Session, source: Source, seen_doc_ids
         doc.gone_at = doc.gone_at or now
         v.last_checked_at = now
         if v.verification_status in (V.VERIFIED_OPEN, V.LIKELY_OPEN):
-            set_status(db, v, V.STATUS_UNKNOWN, reason=f"No longer in the {source.name} listing; may be closed, hidden or moved.", rule="missing_from_listing")
+            set_status(
+                db,
+                v,
+                V.STATUS_UNKNOWN,
+                reason=f"No longer in the {source.name} listing; may be closed, hidden or moved.",
+                rule="missing_from_listing",
+            )
             n += 1
-        elif v.verification_status == V.STATUS_UNKNOWN and doc.gone_at and now - doc.gone_at > timedelta(days=7):
-            set_status(db, v, V.SOURCE_UNAVAILABLE, reason="Missing from the source listing for over 7 days.", rule="missing_7_days")
+        elif (
+            v.verification_status == V.STATUS_UNKNOWN
+            and doc.gone_at
+            and now - doc.gone_at > timedelta(days=7)
+        ):
+            set_status(
+                db,
+                v,
+                V.SOURCE_UNAVAILABLE,
+                reason="Missing from the source listing for over 7 days.",
+                rule="missing_7_days",
+            )
             n += 1
     return n
 
