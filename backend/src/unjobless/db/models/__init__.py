@@ -10,20 +10,21 @@ from .sources import *  # noqa: F403
 __all__ = ["Base"]
 
 
-def _name_enum_checks() -> None:
-    """Give every enum CHECK constraint a stable, column-specific name.
+def _add_enum_checks() -> None:
+    """Add an explicit, column-specific CHECK constraint for every enum column.
 
-    Two columns of the same enum type in one table would otherwise share a constraint name.
+    Enums are stored as VARCHAR (portable, easy to migrate); the constraint restricts values.
     """
-    from sqlalchemy import CheckConstraint
-    from sqlalchemy.sql.elements import conv
+    from sqlalchemy import CheckConstraint, Enum
 
     for table in Base.metadata.tables.values():
-        for c in table.constraints:
-            if isinstance(c, CheckConstraint) and getattr(c, "_type_bound", False):
-                cols = [col.name for col in c.columns]
-                if cols:
-                    c.name = conv(f"ck_{table.name}_{cols[0]}_enum"[:63])
+        for col in table.columns:
+            if isinstance(col.type, Enum) and col.type.enums:
+                name = f"{col.name}_enum"
+                if any(getattr(c, "name", None) and str(c.name).endswith(name) for c in table.constraints):
+                    continue
+                values = ", ".join("'" + v.replace("'", "''") + "'" for v in col.type.enums)
+                table.append_constraint(CheckConstraint(f"{col.name} IN ({values})", name=name))
 
 
-_name_enum_checks()
+_add_enum_checks()
