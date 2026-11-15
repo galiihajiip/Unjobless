@@ -41,7 +41,14 @@ def run(path: Path = DEFAULT_DATASET) -> dict[str, Any]:
             "support": tp + fn,
         }
     # "Opportunity detection" = anything actionable (vacancy/lead/referral/campaign/program) vs not.
-    actionable = {"DIRECT_VACANCY", "INFORMAL_OPPORTUNITY_LEAD", "REFERRAL_SIGNAL", "RECRUITMENT_CAMPAIGN", "CAREER_PROGRAM", "SCHOLARSHIP_OR_COMPETITION"}
+    actionable = {
+        "DIRECT_VACANCY",
+        "INFORMAL_OPPORTUNITY_LEAD",
+        "REFERRAL_SIGNAL",
+        "RECRUITMENT_CAMPAIGN",
+        "CAREER_PROGRAM",
+        "SCHOLARSHIP_OR_COMPETITION",
+    }
     tp = fp = fn = 0
     for gold, preds in confusion.items():
         for pred, c in preds.items():
@@ -53,7 +60,10 @@ def run(path: Path = DEFAULT_DATASET) -> dict[str, Any]:
     return {
         "n": len(rows),
         "accuracy": round(accuracy, 3),
-        "opportunity_detection": {"precision": round(tp / (tp + fp), 3) if tp + fp else None, "recall": round(tp / (tp + fn), 3) if tp + fn else None},
+        "opportunity_detection": {
+            "precision": round(tp / (tp + fp), 3) if tp + fp else None,
+            "recall": round(tp / (tp + fn), 3) if tp + fn else None,
+        },
         "direct_vacancy": per_class.get("DIRECT_VACANCY"),
         "per_class": per_class,
         "confusion": {k: dict(v) for k, v in confusion.items()},
@@ -82,7 +92,9 @@ def render_markdown(r: dict[str, Any]) -> str:
     for g, preds in sorted(r["confusion"].items()):
         lines.append(f"- **{g}**: " + ", ".join(f"{p} {c}" for p, c in sorted(preds.items())))
     lines += ["", "## Misclassified examples", ""]
-    lines += [f"- `{m['id']}` expected {m['expected']}, got {m['predicted']} — {m['reason']}" for m in r["mistakes"]] or ["- none"]
+    lines += [
+        f"- `{m['id']}` expected {m['expected']}, got {m['predicted']} — {m['reason']}" for m in r["mistakes"]
+    ] or ["- none"]
     return "\n".join(lines) + "\n"
 
 
