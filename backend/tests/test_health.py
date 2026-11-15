@@ -14,7 +14,11 @@ def test_live():
 def test_redaction_processor():
     from unjobless.core.logging import redact_processor
 
-    out = redact_processor(None, "info", {"api_key": "sk-abc", "msg": "key sk-ant-ABCDEFGHIJKLMNOP leaked", "nested": {"password": "x"}})
+    out = redact_processor(
+        None,
+        "info",
+        {"api_key": "sk-abc", "msg": "key sk-ant-ABCDEFGHIJKLMNOP leaked", "nested": {"password": "x"}},
+    )
     assert out["api_key"] == "[REDACTED]"
     assert "ABCDEFGHIJ" not in out["msg"]
     assert out["nested"]["password"] == "[REDACTED]"
