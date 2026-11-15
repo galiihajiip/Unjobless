@@ -47,6 +47,7 @@ def _cities(db: Session, v: JobVacancy) -> set[str]:
         for (c,) in db.execute(
             select(JobLocation.city).where(JobLocation.vacancy_id == v.id, JobLocation.city.is_not(None))
         )
+        if c
     }
 
 
