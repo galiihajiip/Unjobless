@@ -14,7 +14,7 @@ import re
 from collections.abc import Iterator
 from typing import Any
 from urllib.parse import urljoin, urlsplit
-from xml.etree import ElementTree as ET  # noqa: S405 - parsing size-capped XML from permitted sources, no DTDs
+from xml.etree import ElementTree as ET
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from selectolax.lexbor import LexborHTMLParser as HTMLParser
@@ -23,7 +23,12 @@ from unjobless.core.errors import BlockedURL, FetchFailed
 from unjobless.domain.enums import CollectionMethod, SourceCategory
 from unjobless.fetch.politeness import RateLimitWait
 from unjobless.fetch.urls import canonicalize_url, host_of
-from unjobless.intelligence.structured import extract_main_text, find_jobpostings, looks_like_access_wall, page_meta
+from unjobless.intelligence.structured import (
+    extract_main_text,
+    find_jobpostings,
+    looks_like_access_wall,
+    page_meta,
+)
 from unjobless.sources.contract import (
     CollectContext,
     CollectedItem,
@@ -40,15 +45,25 @@ XML_TYPES = ("application/xml", "text/xml", "application/rss+xml", "application/
 
 class CareerPageConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    start_urls: list[str] = Field(default_factory=list, max_length=10, description="Listing pages to discover job links from.")
+    start_urls: list[str] = Field(
+        default_factory=list, max_length=10, description="Listing pages to discover job links from."
+    )
     sitemap_url: str | None = None
     feed_url: str | None = Field(default=None, description="RSS or Atom feed of job posts.")
     allowed_path_prefixes: list[str] = Field(default_factory=lambda: ["/"], max_length=20)
-    job_link_selector: str | None = Field(default=None, max_length=200, description="CSS selector for job links on listing pages.")
-    job_url_pattern: str | None = Field(default=None, max_length=300, description="Regex a job detail URL must match.")
-    content_selector: str | None = Field(default=None, max_length=200, description="CSS selector for the main job content.")
+    job_link_selector: str | None = Field(
+        default=None, max_length=200, description="CSS selector for job links on listing pages."
+    )
+    job_url_pattern: str | None = Field(
+        default=None, max_length=300, description="Regex a job detail URL must match."
+    )
+    content_selector: str | None = Field(
+        default=None, max_length=200, description="CSS selector for the main job content."
+    )
     max_pages: int = Field(default=50, ge=1, le=500)
-    respect_robots: bool = Field(default=True, description="Always true in practice; kept explicit for review.")
+    respect_robots: bool = Field(
+        default=True, description="Always true in practice; kept explicit for review."
+    )
 
     @field_validator("job_url_pattern")
     @classmethod
@@ -98,7 +113,9 @@ class CareerPageConnector(Connector):
         path = urlsplit(url).path or "/"
         return any(path.startswith(p) for p in cfg.allowed_path_prefixes)
 
-    def _get(self, ctx: CollectContext, url: str, *, types: tuple[str, ...], headers: dict[str, str] | None = None) -> Any:
+    def _get(
+        self, ctx: CollectContext, url: str, *, types: tuple[str, ...], headers: dict[str, str] | None = None
+    ) -> Any:
         if ctx.polite_get is None:
             raise RuntimeError("polite fetch unavailable")
         try:
@@ -106,7 +123,9 @@ class CareerPageConnector(Connector):
         except RateLimitWait as e:
             raise SourceRateLimited("Host rate limit / crawl-delay", retry_after=e.seconds) from e
 
-    def _discover(self, ctx: CollectContext, cfg: CareerPageConfig) -> Iterator[tuple[str, dict[str, Any] | None]]:
+    def _discover(
+        self, ctx: CollectContext, cfg: CareerPageConfig
+    ) -> Iterator[tuple[str, dict[str, Any] | None]]:
         seen: set[str] = set()
         pattern = re.compile(cfg.job_url_pattern) if cfg.job_url_pattern else None
 
@@ -139,7 +158,9 @@ class CareerPageConnector(Connector):
                     raise SourceUnavailable(f"robots.txt disallows {start}") from e
                 raise SourceUnavailable(e.message) from e
             if res.status_code in (401, 403):
-                raise SourceUnavailable(f"Listing page requires access (HTTP {res.status_code}); not bypassed.")
+                raise SourceUnavailable(
+                    f"Listing page requires access (HTTP {res.status_code}); not bypassed."
+                )
             if res.status_code >= 400:
                 continue
             html = res.text
@@ -152,7 +173,11 @@ class CareerPageConnector(Connector):
             tree = HTMLParser(html)
             nodes = tree.css(cfg.job_link_selector) if cfg.job_link_selector else tree.css("a[href]")
             for a in nodes:
-                href = a.attributes.get("href") if a.tag == "a" else (a.css_first("a[href]").attributes.get("href") if a.css_first("a[href]") else None)
+                href = (
+                    a.attributes.get("href")
+                    if a.tag == "a"
+                    else (a.css_first("a[href]").attributes.get("href") if a.css_first("a[href]") else None)
+                )
                 if not href or href.startswith(("mailto:", "tel:", "javascript:", "#")):
                     continue
                 u = urljoin(res.url, href)
@@ -199,14 +224,21 @@ class CareerPageConnector(Connector):
                 continue
             postings = find_jobpostings(html)
             canonical = meta.get("canonical")
-            canonical = urljoin(res.url, canonical) if canonical and self._in_scope(ctx, cfg, urljoin(res.url, canonical)) else res.url
+            canonical = (
+                urljoin(res.url, canonical)
+                if canonical and self._in_scope(ctx, cfg, urljoin(res.url, canonical))
+                else res.url
+            )
             structured = postings or ([extra] if extra else None)
             if structured:
                 for s in structured:
                     s.setdefault("posting_url", canonical)
                     if not s.get("description_text"):
                         s["description_text"] = text
-            new_validators[key] = {"etag": res.headers.get("etag"), "last_modified": res.headers.get("last-modified")}
+            new_validators[key] = {
+                "etag": res.headers.get("etag"),
+                "last_modified": res.headers.get("last-modified"),
+            }
             yield CollectedItem(
                 native_id=None,
                 url=res.url,
@@ -215,7 +247,9 @@ class CareerPageConnector(Connector):
                 content_type="text/html",
                 raw_text=html,
                 extracted_text=text,
-                title=(postings[0].get("title") if postings else None) or meta.get("og:title") or meta.get("title"),
+                title=(postings[0].get("title") if postings else None)
+                or meta.get("og:title")
+                or meta.get("title"),
                 published_at=None,
                 metadata={k: v for k, v in meta.items() if k != "robots"} | {"http_status": res.status_code},
                 structured=structured,
@@ -239,9 +273,28 @@ def _parse_feed(body: bytes) -> Iterator[tuple[str, dict[str, Any] | None]]:
             link = next((c.text for c in el if c.tag.split("}")[-1] == "link" and c.text), None)
             title = next((c.text for c in el if c.tag.split("}")[-1] == "title"), None)
             if link:
-                yield link.strip(), {"@type": "UnjoblessJob", "provenance": "rss_item", "title": title, "posting_url": link.strip()}
+                yield (
+                    link.strip(),
+                    {
+                        "@type": "UnjoblessJob",
+                        "provenance": "rss_item",
+                        "title": title,
+                        "posting_url": link.strip(),
+                    },
+                )
         elif tag == "entry":
-            link = next((c.attrib.get("href") for c in el if c.tag.split("}")[-1] == "link" and c.attrib.get("href")), None)
+            link = next(
+                (c.attrib.get("href") for c in el if c.tag.split("}")[-1] == "link" and c.attrib.get("href")),
+                None,
+            )
             title = next((c.text for c in el if c.tag.split("}")[-1] == "title"), None)
             if link:
-                yield link.strip(), {"@type": "UnjoblessJob", "provenance": "atom_entry", "title": title, "posting_url": link.strip()}
+                yield (
+                    link.strip(),
+                    {
+                        "@type": "UnjoblessJob",
+                        "provenance": "atom_entry",
+                        "title": title,
+                        "posting_url": link.strip(),
+                    },
+                )
