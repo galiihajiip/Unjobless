@@ -22,4 +22,6 @@ def run_worker() -> None:
         concurrency=settings.global_worker_concurrency,
         wait=True,
         install_signal_handlers=True,
+        shutdown_graceful_timeout=60,
+        delete_jobs="successful",
     )
