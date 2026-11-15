@@ -138,7 +138,7 @@ def render_docx(doc: dict[str, Any], template: Template) -> bytes:
     return buf.getvalue()
 
 
-def _hyperlink(paragraph: Any, url: str, text: str, qn: Any, OxmlElement: Any) -> None:  # noqa: N803
+def _hyperlink(paragraph: Any, url: str, text: str, qn: Any, OxmlElement: Any) -> None:
     part = paragraph.part
     r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
     link = OxmlElement("w:hyperlink")
@@ -156,7 +156,7 @@ def _hyperlink(paragraph: Any, url: str, text: str, qn: Any, OxmlElement: Any) -
     paragraph._p.append(link)
 
 
-def _bottom_border(paragraph: Any, qn: Any, OxmlElement: Any) -> None:  # noqa: N803
+def _bottom_border(paragraph: Any, qn: Any, OxmlElement: Any) -> None:
     ppr = paragraph._p.get_or_add_pPr()
     bdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
