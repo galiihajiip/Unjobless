@@ -87,7 +87,9 @@ class ValidatedTarget:
     ips: list[str]
 
 
-def validate_url(url: str, *, resolver: Resolver | None = None, allowed_ports: Iterable[int] | None = None) -> ValidatedTarget:
+def validate_url(
+    url: str, *, resolver: Resolver | None = None, allowed_ports: Iterable[int] | None = None
+) -> ValidatedTarget:
     """Static + DNS validation. Raises BlockedURL with a user-presentable reason."""
     if not isinstance(url, str) or len(url) > 2048:
         raise BlockedURL("URL is missing or too long.", code="invalid_url")
@@ -130,7 +132,9 @@ def validate_url(url: str, *, resolver: Resolver | None = None, allowed_ports: I
         raise BlockedURL("The host name could not be resolved.", code="dns_failed")
     bad = [ip for ip in ips if not ip_is_public(ip)]
     if bad:
-        raise BlockedURL("This host resolves to a private or reserved network address.", code="private_address")
+        raise BlockedURL(
+            "This host resolves to a private or reserved network address.", code="private_address"
+        )
     return ValidatedTarget(url, scheme, host, port, ips)
 
 
@@ -213,7 +217,9 @@ class SafeFetcher:
         current = url
         redirects: list[str] = []
         safe_extra = {
-            k: v for k, v in (extra_headers or {}).items() if k.lower() in {"if-none-match", "if-modified-since", "accept-language"}
+            k: v
+            for k, v in (extra_headers or {}).items()
+            if k.lower() in {"if-none-match", "if-modified-since", "accept-language"}
         }
         for _hop in range(self.max_redirects + 1):
             try:
@@ -281,7 +287,9 @@ class SafeFetcher:
                     body=bytes(body),
                     truncated=truncated,
                     redirects=redirects,
-                    headers={k.lower(): v for k, v in resp.headers.items() if k.lower() in SAFE_RESPONSE_HEADERS},
+                    headers={
+                        k.lower(): v for k, v in resp.headers.items() if k.lower() in SAFE_RESPONSE_HEADERS
+                    },
                     elapsed_ms=int((time.monotonic() - started) * 1000),
                 )
                 if resp.status_code >= 400:
