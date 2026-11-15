@@ -49,14 +49,22 @@ def create_app() -> FastAPI:
     async def validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
         errors = [{"loc": list(e.get("loc", [])), "msg": e.get("msg", "")} for e in exc.errors()]
         return JSONResponse(
-            {"error": {"code": "validation_failed", "message": "Invalid request", "details": {"errors": errors}}},
+            {
+                "error": {
+                    "code": "validation_failed",
+                    "message": "Invalid request",
+                    "details": {"errors": errors},
+                }
+            },
             status_code=422,
         )
 
     @app.exception_handler(Exception)
     async def unhandled(_: Request, exc: Exception) -> JSONResponse:
         log.error("unhandled_error", error_type=type(exc).__name__)
-        return JSONResponse({"error": {"code": "internal_error", "message": "Internal server error"}}, status_code=500)
+        return JSONResponse(
+            {"error": {"code": "internal_error", "message": "Internal server error"}}, status_code=500
+        )
 
     app.include_router(health.router, prefix="/api")
     return app
