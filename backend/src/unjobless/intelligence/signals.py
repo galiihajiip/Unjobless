@@ -227,11 +227,11 @@ ROLE_RE = re.compile(
     r"\b((?:senior |junior |sr\.? |jr\.? )?(?:[A-Z][\w/&+.-]*\s){0,4}"
     r"(?:Intern|Internship|Engineer|Developer|Analyst|Designer|Manager|Specialist|Officer|Staff|Assistant|Associate|Consultant|Scientist|Writer|Marketing|Admin|Trainee|Programmer|Accountant|Executive|Coordinator|Lead|Barista|Cashier|Kasir|Driver|Teller|Akuntansi|Analis))\b"
 )
-ID_def explicit_open_call(h: dict[str, list[re.Match[str]]]) -> bool:
+ID_ROLE_RE = re.compile(r"\b(?:posisi|lowongan|magang|loker|dicari|dibutuhkan|hiring)\s*:?\s*([A-Za-z][\w /&+.-]{3,60}?)(?=[\n,.;!()]|\s-\s|$)", re.I)
+
+
+def explicit_open_call(h: dict[str, list[re.Match[str]]]) -> bool:
     return any(re.search(r"(sudah dibuka|now open|is open|apply now|daftar sekarang)", m.group(0), re.I) for m in h.get("hiring", []))
-
-
-ROLE_RE = re.compile(r"\b(?:posisi|lowongan|magang|loker|dicari|dibutuhkan|hiring)\s*:?\s*([A-Za-z][\w /&+.-]{3,60}?)(?=[\n,.;!()]|\s-\s|$)", re.I)
 
 
 def _role_guess(title: str | None, text: str) -> tuple[str, str, str] | None:
