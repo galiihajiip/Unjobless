@@ -291,8 +291,8 @@ def usage(db: DB, days: int = Query(30, ge=1, le=365)) -> dict[str, Any]:
             {
                 "task": t,
                 "calls": c,
-                "input_tokens": int(i),
-                "output_tokens": int(o),
+                "input_tokens": int(i or 0),
+                "output_tokens": int(o or 0),
                 "cost_estimate_usd": float(cost) if cost is not None else None,
             }
             for t, c, i, o, cost in by_task
