@@ -14,4 +14,6 @@ def live() -> dict[str, str]:
 @router.get("/ready")
 def ready() -> JSONResponse:
     ok = db_ping()
-    return JSONResponse({"status": "ok" if ok else "unavailable", "database": ok}, status_code=200 if ok else 503)
+    return JSONResponse(
+        {"status": "ok" if ok else "unavailable", "database": ok}, status_code=200 if ok else 503
+    )
