@@ -29,7 +29,7 @@ export default function OverviewPage() {
     <>
       <PageHeader
         eyebrow={<span className="badge badge-brand">Discover broadly · Understand deeply · Apply deliberately</span>}
-        title={`Hello${state && 'display_name' in state && (state as { display_name?: string }).display_name ? `, ${(state as { display_name?: string }).display_name}` : ''}`}
+        title={`Hello${state?.display_name ? `, ${state.display_name}` : ''}`}
         description="Your private career workspace: what is new, what fits, and what needs your attention."
       />
       {ov.isLoading ? (
