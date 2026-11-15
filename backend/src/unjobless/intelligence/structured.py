@@ -47,8 +47,14 @@ def _name(v: Any) -> str | None:
 
 
 EMPLOYMENT_MAP = {
-    "FULL_TIME": "FULL_TIME", "PART_TIME": "PART_TIME", "CONTRACTOR": "CONTRACT", "TEMPORARY": "TEMPORARY",
-    "INTERN": "INTERNSHIP", "VOLUNTEER": "VOLUNTEER", "PER_DIEM": "TEMPORARY", "OTHER": None,
+    "FULL_TIME": "FULL_TIME",
+    "PART_TIME": "PART_TIME",
+    "CONTRACTOR": "CONTRACT",
+    "TEMPORARY": "TEMPORARY",
+    "INTERN": "INTERNSHIP",
+    "VOLUNTEER": "VOLUNTEER",
+    "PER_DIEM": "TEMPORARY",
+    "OTHER": None,
 }
 UNIT_MAP = {"HOUR": "HOUR", "DAY": "DAY", "WEEK": "WEEK", "MONTH": "MONTH", "YEAR": "YEAR"}
 
@@ -61,7 +67,11 @@ def jobposting_to_structured(d: dict[str, Any]) -> dict[str, Any]:
         if isinstance(loc, dict):
             addr = loc.get("address") or {}
             if isinstance(addr, dict):
-                parts = [addr.get("addressLocality"), addr.get("addressRegion"), _name(addr.get("addressCountry"))]
+                parts = [
+                    addr.get("addressLocality"),
+                    addr.get("addressRegion"),
+                    _name(addr.get("addressCountry")),
+                ]
                 s = ", ".join(p for p in parts if p)
                 if s:
                     locs.append(s)
@@ -69,7 +79,14 @@ def jobposting_to_structured(d: dict[str, Any]) -> dict[str, Any]:
                 locs.append(addr)
     et = d.get("employmentType")
     et_list = et if isinstance(et, list) else [et] if et else []
-    employment = next((EMPLOYMENT_MAP.get(str(x).upper().replace(" ", "_")) for x in et_list if EMPLOYMENT_MAP.get(str(x).upper().replace(" ", "_"))), None)
+    employment = next(
+        (
+            EMPLOYMENT_MAP.get(str(x).upper().replace(" ", "_"))
+            for x in et_list
+            if EMPLOYMENT_MAP.get(str(x).upper().replace(" ", "_"))
+        ),
+        None,
+    )
     salary = None
     bs = d.get("baseSalary")
     if isinstance(bs, dict):
@@ -92,7 +109,9 @@ def jobposting_to_structured(d: dict[str, Any]) -> dict[str, Any]:
         "locations": locs,
         "employment_type": employment,
         "work_arrangement": "REMOTE" if remote else None,
-        "remote_eligible_countries": [_name(x) for x in (d.get("applicantLocationRequirements") or [])] if isinstance(d.get("applicantLocationRequirements"), list) else [],
+        "remote_eligible_countries": [_name(x) for x in (d.get("applicantLocationRequirements") or [])]
+        if isinstance(d.get("applicantLocationRequirements"), list)
+        else [],
         "application_url": d.get("url") if isinstance(d.get("url"), str) else None,
         "posting_url": d.get("url") if isinstance(d.get("url"), str) else None,
         "published_at": d.get("datePosted"),
@@ -148,9 +167,17 @@ def extract_main_text(html: str, selector: str | None = None) -> str:
 
 
 ACCESS_WALL_MARKERS = (
-    "captcha", "are you a robot", "verify you are human", "please enable javascript and cookies",
-    "sign in to continue", "log in to continue", "login to continue", "masuk untuk melanjutkan",
-    "access denied", "cf-chl", "attention required",
+    "captcha",
+    "are you a robot",
+    "verify you are human",
+    "please enable javascript and cookies",
+    "sign in to continue",
+    "log in to continue",
+    "login to continue",
+    "masuk untuk melanjutkan",
+    "access denied",
+    "cf-chl",
+    "attention required",
 )
 
 
