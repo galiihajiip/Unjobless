@@ -70,7 +70,10 @@ def db(engine) -> Iterator[Session]:  # type: ignore[no-untyped-def]
 
 @pytest.fixture
 def clean_db(engine) -> Iterator[None]:  # type: ignore[no-untyped-def]
-    """For tests that need real commits across connections (API/worker). Truncates all app tables after."""
+    """For tests that need real commits across connections (API/worker). Truncates all app tables after.
+
+    Never combine with the transactional `db` fixture: TRUNCATE would wait on its open transaction.
+    """
     yield
     from unjobless.db.models import Base
 
