@@ -139,7 +139,9 @@ class AnthropicAdapter:
         except a.NotFoundError as e:
             raise ProviderBadRequest(f"Model {model!r} was not found for this key.") from e
         except a.BadRequestError as e:
-            raise ProviderBadRequest(f"Provider rejected the request: {getattr(e, 'message', '')[:300]}") from e
+            raise ProviderBadRequest(
+                f"Provider rejected the request: {getattr(e, 'message', '')[:300]}"
+            ) from e
         except a.APIStatusError as e:
             if e.status_code == 529:
                 raise ProviderRateLimited("Provider is overloaded.", _retry_after(e.response.headers)) from e
@@ -189,7 +191,10 @@ class OpenAICompatibleAdapter:
             "model": model,
             "max_tokens": max_tokens,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "response_format": {"type": "json_schema", "json_schema": {"name": "result", "schema": schema, "strict": True}},
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "result", "schema": schema, "strict": True},
+            },
         }
         started = time.monotonic()
         try:
@@ -240,7 +245,14 @@ class FakeAdapter:
         if self.handler is None:
             raise ProviderUnavailable("Fake provider has no handler configured.")
         data = self.handler(system, user, schema)
-        return ProviderResult(data=data, model=model, input_tokens=len(user) // 4, output_tokens=50, latency_ms=1, raw_text=json.dumps(data))
+        return ProviderResult(
+            data=data,
+            model=model,
+            input_tokens=len(user) // 4,
+            output_tokens=50,
+            latency_ms=1,
+            raw_text=json.dumps(data),
+        )
 
 
 def build_adapter(kind: str, api_key: str | None, base_url: str | None) -> ProviderAdapter:
