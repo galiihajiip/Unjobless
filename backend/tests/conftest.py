@@ -80,3 +80,14 @@ def clean_db(engine) -> Iterator[None]:  # type: ignore[no-untyped-def]
     names = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
+
+
+@pytest.fixture(autouse=True)
+def _record_defers():
+    """Never open the real queue in tests; record deferred tasks instead."""
+    from unjobless.jobs import queue
+
+    calls: list[tuple[str, dict, str | None]] = []
+    queue.DEFER_OVERRIDE = lambda name, kwargs, lock: calls.append((name, kwargs, lock))
+    yield calls
+    queue.DEFER_OVERRIDE = None
