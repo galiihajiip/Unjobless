@@ -74,6 +74,11 @@ def score_pair(db: Session, a: JobVacancy, b: JobVacancy) -> PairScore:
     ca, cb = _cities(db, a), _cities(db, b)
     if ca and cb and not (ca & cb):
         blockers.append("different_location")
+    elif a.location_text and b.location_text and _loc_key(a.location_text) != _loc_key(b.location_text):
+        blockers.append("different_location")
+    if _distinct_postings_same_source(db, a, b):
+        # The same source lists them as separate postings (different native ids) → separate vacancies.
+        blockers.append("separate_postings_in_same_source")
     for f in ("seniority", "employment_type", "work_arrangement"):
         va, vb = str(getattr(a, f) or "UNKNOWN"), str(getattr(b, f) or "UNKNOWN")
         if va != "UNKNOWN" and vb != "UNKNOWN" and va != vb and "FLEXIBLE" not in (va, vb):
@@ -91,6 +96,18 @@ def score_pair(db: Session, a: JobVacancy, b: JobVacancy) -> PairScore:
     if blockers:
         score = min(score, REVIEW - 0.01) if not strong else min(score, AUTO_MERGE - 0.01)
     return PairScore(round(score, 3), s, blockers, strong)
+
+
+def _loc_key(text: str) -> str:
+    from unjobless.intelligence.text import normalize_key
+
+    return " ".join(sorted(set(normalize_key(text).replace(";", " ").split()) - {"remote", "hybrid", "onsite"}))
+
+
+def _distinct_postings_same_source(db: Session, a: JobVacancy, b: JobVacancy) -> bool:
+    la = db.execute(select(JobVacancySource.source_id, JobVacancySource.source_native_id).where(JobVacancySource.vacancy_id == a.id)).all()
+    lb = db.execute(select(JobVacancySource.source_id, JobVacancySource.source_native_id).where(JobVacancySource.vacancy_id == b.id)).all()
+    return any(sa == sb and na and nb and na != nb for sa, na in la for sb, nb in lb)
 
 
 def candidates_for(db: Session, v: JobVacancy, limit: int = 20) -> list[JobVacancy]:
