@@ -137,7 +137,7 @@ def test_too_many_redirects():
 
 def test_body_capped_and_flagged_truncated():
     def handler(request):
-        return httpx.Response(200, headers={"content-type": "text/plain"}, content=b"a" * 10_000)
+        return httpx.Response(200, headers={"content-type": "text/plain"}, content=b"a" * 3_000)
 
     with make_fetcher(handler, max_bytes=1000) as f:
         r = f.get("https://jobs.example/big")
@@ -153,6 +153,15 @@ def test_decompression_bomb_capped():
     with make_fetcher(handler, max_bytes=10_000) as f:
         r = f.get("https://jobs.example/bomb")
     assert len(r.body) == 10_000 and r.truncated
+
+
+def test_declared_huge_response_rejected_early():
+    def handler(request):
+        return httpx.Response(200, headers={"content-type": "text/plain"}, content=b"a" * 10_000)
+
+    with make_fetcher(handler, max_bytes=1000) as f, pytest.raises(BlockedURL) as e:
+        f.get("https://jobs.example/huge")
+    assert e.value.code == "too_large"
 
 
 def test_unsafe_content_type_rejected():
