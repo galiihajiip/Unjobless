@@ -4,7 +4,14 @@ import pytest
 
 from tests.helpers import FakeFetcher, approved_source, fixture_json
 from unjobless.core.time import utcnow
-from unjobless.db.models import JobEvidence, JobVacancy, JobVacancySource, OpportunitySignal, SentimentAnalysis, VacancyStatusHistory
+from unjobless.db.models import (
+    JobEvidence,
+    JobVacancy,
+    JobVacancySource,
+    OpportunitySignal,
+    SentimentAnalysis,
+    VacancyStatusHistory,
+)
 from unjobless.domain.enums import Actor, RunTrigger
 from unjobless.domain.enums import VerificationStatus as V
 from unjobless.intelligence import dedup, lifecycle
@@ -64,7 +71,14 @@ def test_same_vacancy_from_two_sources_merges(db):
 def make_v(db, title, company_id=None, city=None, seniority="UNKNOWN", **kw):
     from unjobless.db.models import JobLocation
 
-    v = JobVacancy(title=title, normalized_title=title.lower(), company_id=company_id, seniority=seniority, description=kw.pop("description", title + " description " * 20), **kw)
+    v = JobVacancy(
+        title=title,
+        normalized_title=title.lower(),
+        company_id=company_id,
+        seniority=seniority,
+        description=kw.pop("description", title + " description " * 20),
+        **kw,
+    )
     db.add(v)
     db.flush()
     if city:
@@ -110,19 +124,33 @@ def test_merge_and_undo_is_traceable(db):
 
 
 def test_lifecycle_explicit_deadline_expires(db):
-    v = make_v(db, "x", verification_status=V.VERIFIED_OPEN, application_deadline=date(2026, 1, 1), field_meta={"evidenced_fields": ["application_deadline"]})
+    v = make_v(
+        db,
+        "x",
+        verification_status=V.VERIFIED_OPEN,
+        application_deadline=date(2026, 1, 1),
+        field_meta={"evidenced_fields": ["application_deadline"]},
+    )
     lifecycle.apply_deadline_rule(db, v, today=date(2026, 2, 1))
     assert v.verification_status == V.EXPIRED and v.freshness.value == "EXPIRED"
 
 
 def test_lifecycle_old_post_without_deadline_not_expired(db):
-    v = make_v(db, "x", verification_status=V.VERIFIED_OPEN, source_published_at=utcnow() - timedelta(days=400))
+    v = make_v(
+        db, "x", verification_status=V.VERIFIED_OPEN, source_published_at=utcnow() - timedelta(days=400)
+    )
     lifecycle.apply_deadline_rule(db, v)
     assert v.verification_status == V.VERIFIED_OPEN
 
 
 def test_lifecycle_inferred_deadline_does_not_expire(db):
-    v = make_v(db, "x", verification_status=V.VERIFIED_OPEN, application_deadline=date(2026, 1, 1), field_meta={"application_deadline": {"origin": "INFERRED"}})
+    v = make_v(
+        db,
+        "x",
+        verification_status=V.VERIFIED_OPEN,
+        application_deadline=date(2026, 1, 1),
+        field_meta={"application_deadline": {"origin": "INFERRED"}},
+    )
     lifecycle.apply_deadline_rule(db, v, today=date(2026, 2, 1))
     assert v.verification_status == V.VERIFIED_OPEN
 
@@ -135,12 +163,32 @@ def test_user_correction_always_allowed_and_recorded(db):
 
 
 def test_closing_soon_freshness(db):
-    v = make_v(db, "x", verification_status=V.VERIFIED_OPEN, application_deadline=date.today() + timedelta(days=3), first_seen_at=utcnow() - timedelta(days=10), last_verified_at=utcnow())
+    v = make_v(
+        db,
+        "x",
+        verification_status=V.VERIFIED_OPEN,
+        application_deadline=date.today() + timedelta(days=3),
+        first_seen_at=utcnow() - timedelta(days=10),
+        last_verified_at=utcnow(),
+    )
     assert lifecycle.compute_freshness(v).value == "CLOSING_SOON"
 
 
 def test_mock_source_discussion_creates_sentiment_not_vacancy(db):
-    src = approved_source(db, key="m", connector_type="mock", config={"items": [{"id": "1", "title": "", "body": "Pengalaman magang di PT Cepat: kultur toxic dan gaji telat."}]})
+    src = approved_source(
+        db,
+        key="m",
+        connector_type="mock",
+        config={
+            "items": [
+                {
+                    "id": "1",
+                    "title": "",
+                    "body": "Pengalaman magang di PT Cepat: kultur toxic dan gaji telat.",
+                }
+            ]
+        },
+    )
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     out = runner.execute_run(db, run.id)
     process_version(db, out.new_version_ids[0], use_ai=False)
@@ -150,7 +198,20 @@ def test_mock_source_discussion_creates_sentiment_not_vacancy(db):
 
 
 def test_mock_source_referral_creates_signal(db):
-    src = approved_source(db, key="m", connector_type="mock", config={"items": [{"id": "1", "title": "", "body": "Kantorku buka posisi Product Analyst, bisa aku refer, DM aku ya."}]})
+    src = approved_source(
+        db,
+        key="m",
+        connector_type="mock",
+        config={
+            "items": [
+                {
+                    "id": "1",
+                    "title": "",
+                    "body": "Kantorku buka posisi Product Analyst, bisa aku refer, DM aku ya.",
+                }
+            ]
+        },
+    )
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     out = runner.execute_run(db, run.id)
     process_version(db, out.new_version_ids[0], use_ai=False)
