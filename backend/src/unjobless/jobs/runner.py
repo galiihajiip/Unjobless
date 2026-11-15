@@ -213,6 +213,8 @@ def execute_run(
 
     ctx.polite_get = _polite
     new_versions: list[int] = []
+    seen_docs: set[int] = set()
+    unchanged_docs: list[int] = []
     try:
         connector = connector_cls()
         for n, item in enumerate(connector.collect(ctx), start=1):
@@ -221,6 +223,7 @@ def execute_run(
                 with db.begin_nested():
                     res = store_item(db, source, item)
                     outcome = res.outcome
+                    seen_docs.add(res.document.id)
                     db.add(
                         SourceRunItem(
                             run_id=run.id,
@@ -238,6 +241,7 @@ def execute_run(
                     new_versions.append(res.version.id)
                 else:
                     run.unchanged += 1
+                    unchanged_docs.append(res.document.id)
             except Exception as exc:  # one bad item never fails the run
                 run.errors += 1
                 db.add(
@@ -256,6 +260,7 @@ def execute_run(
             if n >= ctx.max_items:
                 break
         # success
+        _post_run_lifecycle(db, source, seen_docs, unchanged_docs, ctx.listing_complete and not run.errors)
         final = RunStatus.PARTIAL if run.errors else RunStatus.SUCCEEDED
         _transition(run, final)
         run.finished_at = utcnow()
@@ -308,6 +313,19 @@ def execute_run(
         if new_versions:
             hook(new_versions)
     return RunOutcome(run.id, run.status, new_versions)
+
+
+def _post_run_lifecycle(db: Session, source: Source, seen: set[int], unchanged: list[int], complete: bool) -> None:
+    """Re-confirm vacancies seen again unchanged; mark those missing from a complete listing uncertain."""
+    from unjobless.intelligence import lifecycle
+    from unjobless.intelligence.vacancies import vacancy_for_document
+
+    for doc_id in unchanged:
+        v = vacancy_for_document(db, doc_id)
+        if v is not None:
+            lifecycle.confirm_seen_in_trusted_listing(db, v, source)
+    if complete:
+        lifecycle.mark_missing_from_complete_listing(db, source, seen)
 
 
 def _schedule_next(source: Source) -> None:
