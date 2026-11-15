@@ -29,7 +29,9 @@ class Evidence(Strict):
 
 
 class JobExtraction(Strict):
-    is_job_posting: bool = Field(description="True only if the text describes a concrete, actionable opening.")
+    is_job_posting: bool = Field(
+        description="True only if the text describes a concrete, actionable opening."
+    )
     language: str | None = Field(description="ISO 639-1 code of the source text, e.g. 'id' or 'en'.")
     title: str | None
     alternative_title: str | None
@@ -37,13 +39,27 @@ class JobExtraction(Strict):
     department: str | None
     locations: list[str]
     work_arrangement: Literal["ONSITE", "HYBRID", "REMOTE", "FLEXIBLE", "UNKNOWN"]
-    employment_type: Literal["FULL_TIME", "PART_TIME", "CONTRACT", "INTERNSHIP", "FREELANCE", "TEMPORARY", "TRAINEE", "VOLUNTEER", "UNKNOWN"]
-    seniority: Literal["INTERN", "ENTRY", "JUNIOR", "MID", "SENIOR", "LEAD", "MANAGER", "EXECUTIVE", "UNKNOWN"]
+    employment_type: Literal[
+        "FULL_TIME",
+        "PART_TIME",
+        "CONTRACT",
+        "INTERNSHIP",
+        "FREELANCE",
+        "TEMPORARY",
+        "TRAINEE",
+        "VOLUNTEER",
+        "UNKNOWN",
+    ]
+    seniority: Literal[
+        "INTERN", "ENTRY", "JUNIOR", "MID", "SENIOR", "LEAD", "MANAGER", "EXECUTIVE", "UNKNOWN"
+    ]
     job_family: str | None
     industry: str | None
     application_url: str | None = Field(description="Only a URL that literally appears in the text.")
     application_email: str | None
-    application_deadline: str | None = Field(description="YYYY-MM-DD, only if a deadline is explicitly stated.")
+    application_deadline: str | None = Field(
+        description="YYYY-MM-DD, only if a deadline is explicitly stated."
+    )
     application_open_date: str | None
     start_date: str | None
     salary_min: float | None
@@ -84,12 +100,26 @@ class JobExtraction(Strict):
 # ---------------------------------------------------------------- signal classification (v1)
 
 Classification = Literal[
-    "DIRECT_VACANCY", "INFORMAL_OPPORTUNITY_LEAD", "REFERRAL_SIGNAL", "RECRUITMENT_CAMPAIGN", "CAREER_PROGRAM",
-    "SCHOLARSHIP_OR_COMPETITION", "EMPLOYER_DISCUSSION", "EMPLOYER_REVIEW", "CAREER_TREND", "IRRELEVANT",
+    "DIRECT_VACANCY",
+    "INFORMAL_OPPORTUNITY_LEAD",
+    "REFERRAL_SIGNAL",
+    "RECRUITMENT_CAMPAIGN",
+    "CAREER_PROGRAM",
+    "SCHOLARSHIP_OR_COMPETITION",
+    "EMPLOYER_DISCUSSION",
+    "EMPLOYER_REVIEW",
+    "CAREER_TREND",
+    "IRRELEVANT",
 ]
 SignalTypeL = Literal[
-    "DIRECT_HIRING", "POSSIBLE_HIRING", "REFERRAL_AVAILABLE", "FUTURE_HIRING_INTENT", "APPLICATION_INVITATION",
-    "RECRUITMENT_BATCH", "CAREER_EVENT", "NOT_AN_OPPORTUNITY",
+    "DIRECT_HIRING",
+    "POSSIBLE_HIRING",
+    "REFERRAL_AVAILABLE",
+    "FUTURE_HIRING_INTENT",
+    "APPLICATION_INVITATION",
+    "RECRUITMENT_BATCH",
+    "CAREER_EVENT",
+    "NOT_AN_OPPORTUNITY",
 ]
 
 
@@ -115,7 +145,18 @@ class SignalClassification(Strict):
 
 
 class SentimentItem(Strict):
-    target: Literal["COMPANY", "RECRUITMENT_PROCESS", "INTERVIEW", "INTERNSHIP_EXPERIENCE", "MANAGEMENT", "WORK_CULTURE", "COMPENSATION", "WORKLOAD", "ROLE", "JOB_SEARCH"]
+    target: Literal[
+        "COMPANY",
+        "RECRUITMENT_PROCESS",
+        "INTERVIEW",
+        "INTERNSHIP_EXPERIENCE",
+        "MANAGEMENT",
+        "WORK_CULTURE",
+        "COMPENSATION",
+        "WORKLOAD",
+        "ROLE",
+        "JOB_SEARCH",
+    ]
     polarity: Literal["POSITIVE", "NEUTRAL", "NEGATIVE", "MIXED", "UNCERTAIN"]
     company: str | None
     confidence: float = Field(ge=0, le=1)
@@ -230,7 +271,9 @@ class TailoredBullet(Strict):
     source_fact_id: str = Field(description="id of the profile fact this bullet is rewritten from.")
     original: str
     rewritten: str
-    changed_facts: bool = Field(description="True if anything beyond wording changed. Must normally be false.")
+    changed_facts: bool = Field(
+        description="True if anything beyond wording changed. Must normally be false."
+    )
 
 
 class TailoredSection(Strict):
