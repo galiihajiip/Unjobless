@@ -103,22 +103,48 @@ class ProfileData(BaseModel):
         """Flat index of every fact id → {kind, text} (used for evidence linking in tailoring)."""
         out: dict[str, dict[str, object]] = {}
         for e in self.educations:
-            out[e.id] = {"kind": "education", "text": " ".join(x for x in [e.degree, e.field, e.institution, e.gpa and f"GPA {e.gpa}"] if x), "verified": e.verified}
+            out[e.id] = {
+                "kind": "education",
+                "text": " ".join(
+                    x for x in [e.degree, e.field, e.institution, e.gpa and f"GPA {e.gpa}"] if x
+                ),
+                "verified": e.verified,
+            }
         for x in self.experiences:
-            out[x.id] = {"kind": "experience", "text": f"{x.title} at {x.organization} ({x.start or '?'}–{x.end or 'present'})", "verified": x.verified}
+            out[x.id] = {
+                "kind": "experience",
+                "text": f"{x.title} at {x.organization} ({x.start or '?'}–{x.end or 'present'})",
+                "verified": x.verified,
+            }
             for b in x.bullets:
                 out[b.id] = {"kind": "bullet", "text": b.text, "parent": x.id, "verified": b.verified}
         for p in self.projects:
-            out[p.id] = {"kind": "project", "text": f"{p.name}: {p.description or ''} [{', '.join(p.technologies)}]", "verified": p.verified}
+            out[p.id] = {
+                "kind": "project",
+                "text": f"{p.name}: {p.description or ''} [{', '.join(p.technologies)}]",
+                "verified": p.verified,
+            }
             for b in p.bullets:
                 out[b.id] = {"kind": "bullet", "text": b.text, "parent": p.id, "verified": b.verified}
         for s in self.skills:
             out[s.id] = {"kind": "skill", "text": s.name, "verified": s.verified}
-        for group, kind in ((self.certifications, "certification"), (self.awards, "award"), (self.publications, "publication")):
+        for group, kind in (
+            (self.certifications, "certification"),
+            (self.awards, "award"),
+            (self.publications, "publication"),
+        ):
             for c in group:
-                out[c.id] = {"kind": kind, "text": " ".join(x for x in [c.name, c.issuer, c.date] if x), "verified": c.verified}
+                out[c.id] = {
+                    "kind": kind,
+                    "text": " ".join(x for x in [c.name, c.issuer, c.date] if x),
+                    "verified": c.verified,
+                }
         for lang in self.languages:
-            out[lang.id] = {"kind": "language", "text": f"{lang.language} {lang.proficiency or ''}".strip(), "verified": lang.verified}
+            out[lang.id] = {
+                "kind": "language",
+                "text": f"{lang.language} {lang.proficiency or ''}".strip(),
+                "verified": lang.verified,
+            }
         return out
 
 
@@ -128,7 +154,18 @@ class CareerPreferencesData(BaseModel):
     job_families: list[str] = Field(default_factory=list, max_length=30)
     industries: list[str] = Field(default_factory=list, max_length=30)
     skills_to_develop: list[str] = Field(default_factory=list, max_length=50)
-    employment_types: list[Literal["FULL_TIME", "PART_TIME", "CONTRACT", "INTERNSHIP", "FREELANCE", "TEMPORARY", "TRAINEE", "VOLUNTEER"]] = Field(default_factory=list)
+    employment_types: list[
+        Literal[
+            "FULL_TIME",
+            "PART_TIME",
+            "CONTRACT",
+            "INTERNSHIP",
+            "FREELANCE",
+            "TEMPORARY",
+            "TRAINEE",
+            "VOLUNTEER",
+        ]
+    ] = Field(default_factory=list)
     work_arrangements: list[Literal["ONSITE", "HYBRID", "REMOTE", "FLEXIBLE"]] = Field(default_factory=list)
     preferred_cities: list[str] = Field(default_factory=list, max_length=30)
     remote_ok: bool = True
@@ -136,7 +173,9 @@ class CareerPreferencesData(BaseModel):
     min_compensation: float | None = Field(default=None, ge=0)
     compensation_currency: str = "IDR"
     compensation_period: Literal["MONTH", "YEAR", "HOUR"] = "MONTH"
-    education_level: Literal["HIGH_SCHOOL", "DIPLOMA", "STUDENT", "BACHELOR", "MASTER", "DOCTORATE"] | None = None
+    education_level: (
+        Literal["HIGH_SCHOOL", "DIPLOMA", "STUDENT", "BACHELOR", "MASTER", "DOCTORATE"] | None
+    ) = None
     current_semester: int | None = Field(default=None, ge=1, le=16)
     career_goals: str | None = Field(default=None, max_length=2000)
     excluded_companies: list[str] = Field(default_factory=list, max_length=100)
