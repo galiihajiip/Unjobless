@@ -18,7 +18,7 @@ from unjobless.intelligence import dedup, lifecycle
 from unjobless.intelligence.extraction import empty_extraction
 from unjobless.intelligence.pipeline import create_signal, version_text
 from unjobless.intelligence.signals import classify
-from unjobless.intelligence.vacancies import apply_extraction, create_vacancy, link_source
+from unjobless.intelligence.vacancies import create_vacancy, link_source
 
 EDITABLE = set(JobExtraction.model_fields) - {"evidence", "warnings", "is_job_posting"}
 
@@ -82,7 +82,8 @@ def confirm_as_vacancy(db: Session, item: ImportItem, corrections: dict[str, Any
     item.result_vacancy_id = v.id
     if corrections:
         item.user_corrections = {**(item.user_corrections or {}), **corrections}
-    IMPORT_ITEM.check(item.status, ImportItemStatus.SAVED) if item.status == ImportItemStatus.NEEDS_REVIEW else None
+    if item.status == ImportItemStatus.NEEDS_REVIEW:
+        IMPORT_ITEM.check(item.status, ImportItemStatus.SAVED)
     item.status = ImportItemStatus.SAVED
     audit(db, "import.confirmed_vacancy", target_type="import_item", target_id=item.id, details={"vacancy_id": v.id})
     refresh_batch_status(db, item.batch_id)
@@ -132,13 +133,20 @@ def merge_into(db: Session, item: ImportItem, vacancy_id: int) -> JobVacancy:
         raise NotFound("Vacancy not found.")
     link_source(db, v, src, doc, version)
     # Fill gaps only; never overwrite existing canonical values with the import's extraction.
+    from decimal import Decimal
+
+    from unjobless.intelligence.normalize import parse_iso_date
+
     x = corrected_extraction(item, None)
-    if not v.application_deadline and x.application_deadline or not v.salary_min and x.salary_min:
-        tmp = JobExtraction.model_validate({**x.model_dump(), "title": v.title})
-        if v.application_deadline or v.salary_min:
-            pass
-        else:
-            apply_extraction(db, v, tmp, version=version, source_text=version_text(version))
+    if v.application_deadline is None and x.application_deadline:
+        v.application_deadline = parse_iso_date(x.application_deadline)
+    if v.salary_min is None and x.salary_min is not None:
+        v.salary_min = Decimal(str(x.salary_min))
+        v.salary_max = Decimal(str(x.salary_max if x.salary_max is not None else x.salary_min))
+        v.salary_currency = v.salary_currency or x.salary_currency
+    if v.application_url is None and x.application_url:
+        v.application_url = x.application_url
+    v.freshness = lifecycle.compute_freshness(v)
     item.result_vacancy_id = v.id
     item.status = ImportItemStatus.DUPLICATE
     item.failure_reason = f"Merged into vacancy #{v.id}."
