@@ -22,7 +22,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         import uvicorn
 
-        uvicorn.run("unjobless.main:app", host=args.host, port=args.port, reload=args.reload, proxy_headers=True)
+        uvicorn.run(
+            "unjobless.main:app", host=args.host, port=args.port, reload=args.reload, proxy_headers=True
+        )
     elif args.command == "migrate":
         from unjobless.db.migrate import upgrade_head
 
