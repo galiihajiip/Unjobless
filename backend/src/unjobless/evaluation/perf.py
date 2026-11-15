@@ -24,12 +24,13 @@ def seed(url: str, n: int) -> None:
     rng = random.Random(42)
     with eng.begin() as c:
         c.execute(text("INSERT INTO companies (name, normalized_name, manually_verified) SELECT 'Company ' || g, 'company ' || g, false FROM generate_series(1, 400) g"))
+        base = c.execute(text("SELECT min(id) FROM companies")).scalar_one()
         rows = []
         for i in range(n):
             t = f"{rng.choice(['', 'Junior ', 'Senior ', 'Magang '])}{rng.choice(TITLES)}"
             city = rng.choice(CITIES)
             rows.append({
-                "t": t, "nt": t.lower(), "co": rng.randint(1, 400), "cn": f"Company {rng.randint(1, 400)}", "st": rng.choice(["VERIFIED_OPEN", "LIKELY_OPEN", "NEEDS_REVIEW", "STATUS_UNKNOWN", "EXPIRED"]),
+                "t": t, "nt": t.lower(), "co": base + rng.randint(0, 399), "cn": f"Company {rng.randint(1, 400)}", "st": rng.choice(["VERIFIED_OPEN", "LIKELY_OPEN", "NEEDS_REVIEW", "STATUS_UNKNOWN", "EXPIRED"]),
                 "fr": rng.choice(["NEW", "ACTIVE", "STALE", "CLOSING_SOON"]), "et": rng.choice(["INTERNSHIP", "FULL_TIME", "CONTRACT"]), "wa": rng.choice(["ONSITE", "HYBRID", "REMOTE"]),
                 "loc": city, "conf": rng.random(), "desc": f"{t} role in {city}. " + " ".join(rng.sample(SKILLS, 4)) * 20,
                 "sk": " ".join(rng.sample(SKILLS, 3)), "days": rng.randint(0, 200),
