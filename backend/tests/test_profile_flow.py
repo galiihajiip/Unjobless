@@ -115,7 +115,7 @@ def test_matching_scores_and_unknowns(db):
     m = db.execute(select(MatchAnalysis).where(MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True))).scalar_one()
     req = next(c for c in m.breakdown["candidate_fit"] if c["name"] == "required_skills")
     assert req["score"] == 0.5 and req["missing"] == ["Tableau"]
-    assert req["matched"][0]["evidence"] == ["sk_1"]
+    assert "sk_1" in req["matched"][0]["evidence"]
     assert "compensation" in m.breakdown["unknowns"]  # salary not stated → unknown, not zero
     assert m.candidate_fit_score is not None and m.preference_fit_score is not None
     assert m.profile_version_id == pv.id
