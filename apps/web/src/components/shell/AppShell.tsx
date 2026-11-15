@@ -22,11 +22,13 @@ function useOnline() {
 }
 
 export function AppShell() {
-  const [moreOpen, setMoreOpen] = useState(false)
   const location = useLocation()
+  // The sheet is tied to the path it was opened on, so navigating closes it without an effect.
+  const [moreOpenAt, setMoreOpenAt] = useState<string | null>(null)
+  const moreOpen = moreOpenAt === location.pathname
+  const setMoreOpen = (v: boolean) => setMoreOpenAt(v ? location.pathname : null)
   const online = useOnline()
   const { logout } = useAuth()
-  useEffect(() => setMoreOpen(false), [location.pathname])
   const current = NAV.find((n) => (n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to)))
   const moreActive = current ? !MOBILE_PRIMARY.includes(current.to) : false
 
