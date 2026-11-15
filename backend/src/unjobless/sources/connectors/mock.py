@@ -31,7 +31,9 @@ class MockConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     items: list[MockItem] = Field(default_factory=list, max_length=200)
     page_size: int = Field(default=50, ge=1, le=200)
-    fail_with: str | None = Field(default=None, description="test hook: 'error' | 'unavailable' | 'rate_limited'")
+    fail_with: str | None = Field(
+        default=None, description="test hook: 'error' | 'unavailable' | 'rate_limited'"
+    )
 
 
 @register
@@ -77,4 +79,6 @@ class MockConnector(Connector):
 
     def health_check(self, ctx: CollectContext) -> HealthResult:
         cfg: Any = ctx.config
-        return HealthResult(ok=cfg.fail_with is None, message="mock" if cfg.fail_with is None else cfg.fail_with)
+        return HealthResult(
+            ok=cfg.fail_with is None, message="mock" if cfg.fail_with is None else cfg.fail_with
+        )
