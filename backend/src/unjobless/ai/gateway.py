@@ -152,6 +152,9 @@ def run_task(
     )
     db.add(run)
     db.flush()
+    if provider.cooldown_until and provider.cooldown_until > utcnow():
+        # Respect the provider's rate limit: wait it out rather than switching providers.
+        raise AIUnavailable(f"{provider.name} is cooling down after a rate limit; the task will retry later.")
     candidates = [(provider, model)]
     fallback = _fallback_provider(db, provider)
     if fallback is not None:
