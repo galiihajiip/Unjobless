@@ -75,13 +75,8 @@ def score_pair(db: Session, a: JobVacancy, b: JobVacancy) -> PairScore:
     if ca and cb and not (ca & cb):
         blockers.append("different_location")
     for f in ("seniority", "employment_type", "work_arrangement"):
-        va, vb = getattr(a, f), getattr(b, f)
-        if (
-            va.value != "UNKNOWN"
-            and vb.value != "UNKNOWN"
-            and va != vb
-            and not (f == "work_arrangement" and "FLEXIBLE" in (va.value, vb.value))
-        ):
+        va, vb = str(getattr(a, f) or "UNKNOWN"), str(getattr(b, f) or "UNKNOWN")
+        if va != "UNKNOWN" and vb != "UNKNOWN" and va != vb and "FLEXIBLE" not in (va, vb):
             blockers.append(f"different_{f}")
     if a.recruitment_batch and b.recruitment_batch and a.recruitment_batch != b.recruitment_batch:
         blockers.append("different_batch")
