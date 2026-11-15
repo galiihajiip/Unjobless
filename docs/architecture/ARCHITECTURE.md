@@ -101,7 +101,9 @@ docs/                product, architecture, domain, design, ops
 | psycopg | 3.3 | Postgres driver used by SQLAlchemy and Procrastinate |
 | Pydantic / pydantic-settings | 2.14 / 2.16 | Validation at trust boundaries, env config |
 | Procrastinate | 3.11 | Postgres-backed queue: retries, periodic tasks, locks, actively maintained |
-| httpx + dnspython | 0.28 / 2.9 | HTTP client with transport hooks; explicit DNS resolution for SSRF checks |
+| httpx | 0.28 | HTTP client; requests are pinned to pre-validated IPs (SSRF defence) |
+| anthropic | 2.8 | Official Claude SDK for the Anthropic provider adapter |
+| pillow, reportlab | 13 / 5.1 | Image validation (OCR uploads); PDF export |
 | selectolax, trafilatura | 1.0 / 2.3 | Fast HTML parsing; maintained readable-content extraction |
 | pypdf, python-docx | 7.1 / 1.2 | CV text extraction and DOCX export |
 | cryptography, argon2-cffi | 50 / 25 | Fernet/AES-GCM key encryption; password hashing |
