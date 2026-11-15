@@ -7,7 +7,14 @@ import pytest
 from sqlalchemy import select
 
 from unjobless.core.errors import InvalidTransition, ValidationFailed
-from unjobless.db.models import CandidateProfileVersion, JobComparisonItem, JobSkill, JobVacancy, MatchAnalysis, TailoredResume
+from unjobless.db.models import (
+    CandidateProfileVersion,
+    JobComparisonItem,
+    JobSkill,
+    JobVacancy,
+    MatchAnalysis,
+    TailoredResume,
+)
 from unjobless.db.session import session_scope
 from unjobless.domain.enums import ApplicationStatus, EmploymentType, ProfileVersionStatus, WorkArrangement
 from unjobless.domain.enums import VerificationStatus as V
@@ -17,12 +24,20 @@ from unjobless.profile.schemas import CareerPreferencesData, ProfileData
 pytestmark = pytest.mark.db
 
 CV_LINES = [
-    "Budi Santoso", "budi.synthetic@example.com | +62 812 0000 0000 | Bandung",
-    "Pendidikan", "Universitas Contoh — S1 Informatika 2022 - sekarang", "IPK: 3.60",
-    "Pengalaman", "Data Analyst Intern di PT Data Sejahtera Jan 2025 - Jun 2025", "- Membuat dashboard penjualan dengan SQL dan Looker",
+    "Budi Santoso",
+    "budi.synthetic@example.com | +62 812 0000 0000 | Bandung",
+    "Pendidikan",
+    "Universitas Contoh — S1 Informatika 2022 - sekarang",
+    "IPK: 3.60",
+    "Pengalaman",
+    "Data Analyst Intern di PT Data Sejahtera Jan 2025 - Jun 2025",
+    "- Membuat dashboard penjualan dengan SQL dan Looker",
     "- Membersihkan data 20.000 baris dengan Python",
-    "Proyek", "Prediksi Harga Rumah", "- Model regresi dengan Python dan Scikit-learn",
-    "Keahlian", "SQL, Python, Excel, Looker, Communication",
+    "Proyek",
+    "Prediksi Harga Rumah",
+    "- Model regresi dengan Python dan Scikit-learn",
+    "Keahlian",
+    "SQL, Python, Excel, Looker, Communication",
 ]
 
 
@@ -82,24 +97,54 @@ def test_cv_to_confirmed_profile(engine, clean_db, tmp_path, monkeypatch):
 
 
 def seed_profile(db, prefs=None):
-    p = ProfileData.model_validate({
-        "headline": None, "contact": {"full_name": "Test Person"},
-        "educations": [{"id": "edu_1", "institution": "Uni", "degree": "S1", "field": "Informatika", "gpa": "3.6"}],
-        "experiences": [{"id": "exp_1", "organization": "PT A", "title": "Data Analyst Intern", "kind": "internship",
-                         "bullets": [{"id": "b_1", "text": "Built SQL dashboards for 3 teams"}]}],
-        "skills": [{"id": "sk_1", "name": "SQL"}, {"id": "sk_2", "name": "Python"}],
-    })
+    p = ProfileData.model_validate(
+        {
+            "headline": None,
+            "contact": {"full_name": "Test Person"},
+            "educations": [
+                {"id": "edu_1", "institution": "Uni", "degree": "S1", "field": "Informatika", "gpa": "3.6"}
+            ],
+            "experiences": [
+                {
+                    "id": "exp_1",
+                    "organization": "PT A",
+                    "title": "Data Analyst Intern",
+                    "kind": "internship",
+                    "bullets": [{"id": "b_1", "text": "Built SQL dashboards for 3 teams"}],
+                }
+            ],
+            "skills": [{"id": "sk_1", "name": "SQL"}, {"id": "sk_2", "name": "Python"}],
+        }
+    )
     v = cv.new_draft(db, p)
     cv.confirm(db, v)
     from unjobless.db.models import CareerPreferences
 
-    db.add(CareerPreferences(data=(prefs or CareerPreferencesData(target_roles=["data analyst"], work_arrangements=["REMOTE", "HYBRID"], preferred_cities=["Jakarta"], min_compensation=3_000_000)).model_dump(mode="json")))
+    db.add(
+        CareerPreferences(
+            data=(
+                prefs
+                or CareerPreferencesData(
+                    target_roles=["data analyst"],
+                    work_arrangements=["REMOTE", "HYBRID"],
+                    preferred_cities=["Jakarta"],
+                    min_compensation=3_000_000,
+                )
+            ).model_dump(mode="json")
+        )
+    )
     db.flush()
     return v
 
 
 def vacancy(db, title, skills, **kw):
-    v = JobVacancy(title=title, normalized_title=title.lower(), verification_status=V.VERIFIED_OPEN, data_confidence=0.7, **kw)
+    v = JobVacancy(
+        title=title,
+        normalized_title=title.lower(),
+        verification_status=V.VERIFIED_OPEN,
+        data_confidence=0.7,
+        **kw,
+    )
     db.add(v)
     db.flush()
     for s, req in skills:
@@ -110,9 +155,17 @@ def vacancy(db, title, skills, **kw):
 
 def test_matching_scores_and_unknowns(db):
     pv = seed_profile(db)
-    a = vacancy(db, "Data Analyst Intern", [("SQL", True), ("Tableau", True)], work_arrangement=WorkArrangement.REMOTE, employment_type=EmploymentType.INTERNSHIP)
+    a = vacancy(
+        db,
+        "Data Analyst Intern",
+        [("SQL", True), ("Tableau", True)],
+        work_arrangement=WorkArrangement.REMOTE,
+        employment_type=EmploymentType.INTERNSHIP,
+    )
     matching.recompute_all(db)
-    m = db.execute(select(MatchAnalysis).where(MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True))).scalar_one()
+    m = db.execute(
+        select(MatchAnalysis).where(MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True))
+    ).scalar_one()
     req = next(c for c in m.breakdown["candidate_fit"] if c["name"] == "required_skills")
     assert req["score"] == 0.5 and req["missing"] == ["Tableau"]
     assert "sk_1" in req["matched"][0]["evidence"]
@@ -125,14 +178,22 @@ def test_match_changes_after_preferences_change(db):
     seed_profile(db)
     a = vacancy(db, "Data Analyst Intern", [("SQL", True)], work_arrangement=WorkArrangement.ONSITE)
     matching.recompute_all(db)
-    before = db.execute(select(MatchAnalysis.preference_fit_score).where(MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True))).scalar_one()
+    before = db.execute(
+        select(MatchAnalysis.preference_fit_score).where(
+            MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True)
+        )
+    ).scalar_one()
     from unjobless.db.models import CareerPreferences
 
     row = db.execute(select(CareerPreferences)).scalar_one()
     row.data = {**row.data, "work_arrangements": ["ONSITE"]}
     db.flush()
     matching.recompute_all(db)
-    after = db.execute(select(MatchAnalysis.preference_fit_score).where(MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True))).scalar_one()
+    after = db.execute(
+        select(MatchAnalysis.preference_fit_score).where(
+            MatchAnalysis.vacancy_id == a.id, MatchAnalysis.is_current.is_(True)
+        )
+    ).scalar_one()
     assert after > before
 
 
@@ -151,8 +212,18 @@ def test_compare_rejects_anything_but_two_distinct(db, ids):
 
 def test_compare_result_reproducible_and_missing_is_unknown(db):
     seed_profile(db)
-    a = vacancy(db, "Data Analyst Intern", [("SQL", True)], work_arrangement=WorkArrangement.REMOTE, salary_min=3_000_000, salary_max=4_000_000, salary_currency="IDR")
-    b = vacancy(db, "Data Analyst Intern", [("SQL", True), ("Python", True)], work_arrangement=WorkArrangement.ONSITE)
+    a = vacancy(
+        db,
+        "Data Analyst Intern",
+        [("SQL", True)],
+        work_arrangement=WorkArrangement.REMOTE,
+        salary_min=3_000_000,
+        salary_max=4_000_000,
+        salary_currency="IDR",
+    )
+    b = vacancy(
+        db, "Data Analyst Intern", [("SQL", True), ("Python", True)], work_arrangement=WorkArrangement.ONSITE
+    )
     r1 = compare.compare(db, [a.id, b.id], save=True)
     r2 = compare.compare(db, [a.id, b.id], save=False)
     assert [c["winner"] for c in r1["criteria"]] == [c["winner"] for c in r2["criteria"]]
@@ -182,8 +253,13 @@ def test_tailoring_never_changes_master_and_flags_invented_claims(db):
     tr = tailoring.generate(db, a.id, language="en", use_ai=False)
     assert "Tableau" in tr.content["missing_requirements"]
     assert db.get(CandidateProfileVersion, pv.id).data == before
-    assert tailoring.check_claim("Built SQL dashboards for 5 teams using Tableau", ["Built SQL dashboards for 3 teams"])
-    assert tailoring.check_claim("Created SQL dashboards for 3 teams", ["Built SQL dashboards for 3 teams"]) == []
+    assert tailoring.check_claim(
+        "Built SQL dashboards for 5 teams using Tableau", ["Built SQL dashboards for 3 teams"]
+    )
+    assert (
+        tailoring.check_claim("Created SQL dashboards for 3 teams", ["Built SQL dashboards for 3 teams"])
+        == []
+    )
     # decisions create a new immutable child
     child = tailoring.decide(db, tr, {c["id"]: True for c in tr.content["claims"] if not c["issues"]})
     assert child.parent_id == tr.id and db.query(TailoredResume).count() == 2
@@ -196,8 +272,20 @@ def test_claim_with_issues_requires_explicit_confirmation(db):
     a = vacancy(db, "Data Analyst Intern", [("SQL", True)])
     tr = tailoring.generate(db, a.id, use_ai=False)
     content = dict(tr.content)
-    content["claims"] = [{"id": "c_bad", "section": "bullet", "original": "Built SQL dashboards for 3 teams", "proposed": "Built dashboards for 10 teams", "fact_ids": ["b_1"], "issues": ["Introduces numbers"], "accepted": False}]
-    tr2 = TailoredResume(vacancy_id=a.id, profile_version_id=tr.profile_version_id, language="id", content=content)
+    content["claims"] = [
+        {
+            "id": "c_bad",
+            "section": "bullet",
+            "original": "Built SQL dashboards for 3 teams",
+            "proposed": "Built dashboards for 10 teams",
+            "fact_ids": ["b_1"],
+            "issues": ["Introduces numbers"],
+            "accepted": False,
+        }
+    ]
+    tr2 = TailoredResume(
+        vacancy_id=a.id, profile_version_id=tr.profile_version_id, language="id", content=content
+    )
     db.add(tr2)
     db.flush()
     with pytest.raises(ValidationFailed):
