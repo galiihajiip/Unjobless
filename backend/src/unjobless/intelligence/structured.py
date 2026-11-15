@@ -144,8 +144,9 @@ def page_meta(html: str) -> dict[str, Any]:
     if desc and desc.attributes.get("content"):
         meta["description"] = desc.attributes["content"]
     robots = tree.css_first('meta[name="robots"]')
-    if robots and robots.attributes.get("content"):
-        meta["robots"] = robots.attributes["content"].lower()
+    robots_content = robots.attributes.get("content") if robots else None
+    if robots_content:
+        meta["robots"] = robots_content.lower()
     return meta
 
 
