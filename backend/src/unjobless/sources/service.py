@@ -59,7 +59,9 @@ def create_source(
         raise Conflict(f"A source with key {key!r} already exists.")
     if domain and is_excluded(db, domain):
         raise ValidationFailed(f"{domain} is on the exclusion list and cannot be added as a source.")
-    interval = schedule_interval_seconds if schedule_interval_seconds is not None else info.default_schedule_seconds
+    interval = (
+        schedule_interval_seconds if schedule_interval_seconds is not None else info.default_schedule_seconds
+    )
     if interval is not None and interval < MIN_INTERVAL_SECONDS:
         raise ValidationFailed(f"Schedule interval must be at least {MIN_INTERVAL_SECONDS} seconds.")
     src = Source(
@@ -158,7 +160,13 @@ def review_policy(
     if decision not in ENABLEABLE_POLICIES and src.state != SourceState.DISABLED:
         src.state = SourceState.DISABLED
         src.next_run_at = None
-    audit(db, "source.policy_reviewed", target_type="source", target_id=src.id, details={"decision": decision.value})
+    audit(
+        db,
+        "source.policy_reviewed",
+        target_type="source",
+        target_id=src.id,
+        details={"decision": decision.value},
+    )
     db.flush()
     return review
 
@@ -170,7 +178,8 @@ def change_state(db: Session, src: Source, target: SourceState) -> Source:
     if target == SourceState.ENABLED:
         if src.policy_status not in ENABLEABLE_POLICIES:
             raise ValidationFailed(
-                "Review this source's terms and robots policy before enabling it.", code="policy_review_required"
+                "Review this source's terms and robots policy before enabling it.",
+                code="policy_review_required",
             )
         if src.domain and is_excluded(db, src.domain):
             raise ValidationFailed("This source's domain is on the exclusion list.", code="excluded")
@@ -193,8 +202,14 @@ def add_exclusion(db: Session, pattern: str, reason: str) -> SourceExclusion:
     db.add(ex)
     db.flush()
     # Disable any source whose domain is now excluded.
-    for src in db.execute(select(Source).where(Source.is_system.is_(False), Source.domain.is_not(None))).scalars():
-        if src.domain and matches_exclusion(f"https://{src.domain}/", pattern) and src.state != SourceState.DISABLED:
+    for src in db.execute(
+        select(Source).where(Source.is_system.is_(False), Source.domain.is_not(None))
+    ).scalars():
+        if (
+            src.domain
+            and matches_exclusion(f"https://{src.domain}/", pattern)
+            and src.state != SourceState.DISABLED
+        ):
             src.state = SourceState.DISABLED
             src.next_run_at = None
     audit(db, "source.exclusion_added", details={"pattern": pattern})
