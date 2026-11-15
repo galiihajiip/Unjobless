@@ -17,7 +17,14 @@ def _register_hooks() -> None:
     if enqueue_versions not in runner.NEW_VERSION_HOOKS:
         runner.NEW_VERSION_HOOKS.append(enqueue_versions)
     if not maintenance.DAILY_STEPS:
-        maintenance.DAILY_STEPS.extend([maintenance.raw_retention, maintenance.lifecycle_recheck, maintenance.trends_refresh, maintenance.daily_backup])
+        maintenance.DAILY_STEPS.extend(
+            [
+                maintenance.raw_retention,
+                maintenance.lifecycle_recheck,
+                maintenance.trends_refresh,
+                maintenance.daily_backup,
+            ]
+        )
 
 
 _register_hooks()
