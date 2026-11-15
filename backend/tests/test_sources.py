@@ -83,8 +83,13 @@ def test_new_connector_registers_without_core_changes(db):
     @register
     class ExtraConnector(Connector):
         info = ConnectorInfo(
-            type="extra_test", name="Extra", category=SourceCategory.RSS_FEED, collection_method=CollectionMethod.RSS,
-            description="test", documentation_url=None, terms_url=None,
+            type="extra_test",
+            name="Extra",
+            category=SourceCategory.RSS_FEED,
+            collection_method=CollectionMethod.RSS,
+            description="test",
+            documentation_url=None,
+            terms_url=None,
         )
 
         def collect(self, ctx):
