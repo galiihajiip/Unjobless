@@ -81,18 +81,17 @@ function Upload({ onUploaded }: { onUploaded: (id: number) => void }) {
 function ProfileTab({ ov, refetch }: { ov: Overview; refetch: () => void }) {
   const [waiting, setWaiting] = useState<number | null>(null)
   const ext = useGet<{ status: string; warnings?: string[]; method?: string }>(['resume-ext', waiting], waiting ? `/profile/resumes/${waiting}/extraction` : null, { refetchInterval: waiting ? 2000 : false })
+  const done = ext.data?.status === 'done'
+  const processing = waiting !== null && !done
   useEffect(() => {
-    if (ext.data?.status === 'done') {
-      setWaiting(null)
-      refetch()
-    }
-  }, [ext.data?.status, refetch])
+    if (done) refetch()
+  }, [done, refetch])
   const draft = ov.latest_draft
   const startDraft = useAction(() => post<ProfileVersion>('/profile/drafts'), { invalidate: [['profile']] })
   return (
     <div className="stack">
       <Upload onUploaded={setWaiting} />
-      {waiting && <Alert tone="info" title="Reading your CV…">Extracting text and structuring sections. This page updates automatically.</Alert>}
+      {processing && <Alert tone="info" title="Reading your CV…">Extracting text and structuring sections. This page updates automatically.</Alert>}
       {draft ? (
         <DraftEditor key={draft.id} v={draft} onConfirmed={refetch} />
       ) : ov.active ? (
