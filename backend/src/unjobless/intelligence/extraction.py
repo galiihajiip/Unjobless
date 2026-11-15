@@ -62,7 +62,9 @@ SECTION_HEADS = {
     "stages": r"(selection process|hiring process|tahapan seleksi|proses seleksi|alur rekrutmen)",
     "nice": r"(nice to have|preferred|plus points?|bonus points?|diutamakan|nilai tambah)",
 }
-COMPANY_RE = re.compile(r"\b(?:PT|CV|Tbk|Perum|PD)\.?\s+[A-Z][\w&.-]*(?:\s+(?!di\b|in\b|at\b)[A-Z][\w&.-]*){0,4}")
+COMPANY_RE = re.compile(
+    r"\b(?:PT|CV|Tbk|Perum|PD)\.?\s+[A-Z][\w&.-]*(?:\s+(?!di\b|in\b|at\b)[A-Z][\w&.-]*){0,4}"
+)
 HEAD_RE = re.compile(r"^\s*(?:#+\s*)?(" + "|".join(SECTION_HEADS.values()) + r")\s*:?\s*$", re.I | re.M)
 
 
