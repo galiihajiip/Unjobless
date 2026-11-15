@@ -15,7 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from unjobless.core.logging import get_logger
-from unjobless.db.models import ImportItem, OpportunitySignal, RawSourceDocument, RawSourceVersion, SignalEntity, Source
+from unjobless.db.models import (
+    ImportItem,
+    OpportunitySignal,
+    RawSourceDocument,
+    RawSourceVersion,
+    SignalEntity,
+    Source,
+)
 from unjobless.domain.enums import (
     CollectionMethod,
     FieldOrigin,
@@ -30,19 +37,29 @@ from unjobless.intelligence.extraction import EXTRACTOR_VERSION, extract
 from unjobless.intelligence.signals import SignalResult, classify_with_ai
 from unjobless.intelligence.structured import extract_main_text
 from unjobless.intelligence.text import guess_language, html_to_text
-from unjobless.intelligence.vacancies import apply_extraction, create_vacancy, link_source, vacancy_for_document
+from unjobless.intelligence.vacancies import (
+    apply_extraction,
+    create_vacancy,
+    link_source,
+    vacancy_for_document,
+)
 
 log = get_logger(__name__)
 
 VACANCY_CLASSES = {OpportunityClassification.DIRECT_VACANCY, OpportunityClassification.RECRUITMENT_CAMPAIGN}
 SIGNAL_CLASSES = {
-    OpportunityClassification.INFORMAL_OPPORTUNITY_LEAD, OpportunityClassification.REFERRAL_SIGNAL,
-    OpportunityClassification.RECRUITMENT_CAMPAIGN, OpportunityClassification.CAREER_PROGRAM,
+    OpportunityClassification.INFORMAL_OPPORTUNITY_LEAD,
+    OpportunityClassification.REFERRAL_SIGNAL,
+    OpportunityClassification.RECRUITMENT_CAMPAIGN,
+    OpportunityClassification.CAREER_PROGRAM,
     OpportunityClassification.SCHOLARSHIP_OR_COMPETITION,
 }
 DISCUSSION_CLASSES = {
-    OpportunityClassification.EMPLOYER_DISCUSSION, OpportunityClassification.EMPLOYER_REVIEW, OpportunityClassification.CAREER_TREND,
-    OpportunityClassification.REFERRAL_SIGNAL, OpportunityClassification.INFORMAL_OPPORTUNITY_LEAD,
+    OpportunityClassification.EMPLOYER_DISCUSSION,
+    OpportunityClassification.EMPLOYER_REVIEW,
+    OpportunityClassification.CAREER_TREND,
+    OpportunityClassification.REFERRAL_SIGNAL,
+    OpportunityClassification.INFORMAL_OPPORTUNITY_LEAD,
 }
 TRUSTED = {CollectionMethod.ATS_PUBLIC_API, CollectionMethod.OFFICIAL_API}
 
@@ -56,7 +73,11 @@ def version_text(version: RawSourceVersion) -> str:
     elif version.content_type == "application/json":
         text = version.raw_text or ""
     else:
-        text = html_to_text(version.raw_text or "") if "<" in (version.raw_text or "")[:500] else (version.raw_text or "")
+        text = (
+            html_to_text(version.raw_text or "")
+            if "<" in (version.raw_text or "")[:500]
+            else (version.raw_text or "")
+        )
     from unjobless.db.models import ContentTranscription
 
     extra = [t.text for t in _transcriptions(version, ContentTranscription)]
@@ -77,14 +98,31 @@ def analyze(db: Session, version: RawSourceVersion, *, use_ai: bool = True) -> d
     text = version_text(version)
     structured = [s for s in (version.structured_data or []) if isinstance(s, dict)]
     title = version.title
-    sig = classify_with_ai(db, text, title=title, structured=bool(structured), input_ref=f"raw_version:{version.id}") if use_ai else None
+    sig = (
+        classify_with_ai(
+            db, text, title=title, structured=bool(structured), input_ref=f"raw_version:{version.id}"
+        )
+        if use_ai
+        else None
+    )
     if sig is None:
         from unjobless.intelligence.signals import classify
 
         sig = classify(text, title=title, structured=bool(structured))
-    proposal: dict[str, Any] = {"classification": sig.to_dict(), "language": version.language or guess_language(text), "extractor_version": EXTRACTOR_VERSION}
+    proposal: dict[str, Any] = {
+        "classification": sig.to_dict(),
+        "language": version.language or guess_language(text),
+        "extractor_version": EXTRACTOR_VERSION,
+    }
     if sig.primary in VACANCY_CLASSES or structured:
-        x, method = extract(text, title=title, structured=structured, db=db, use_ai=use_ai, input_ref=f"raw_version:{version.id}")
+        x, method = extract(
+            text,
+            title=title,
+            structured=structured,
+            db=db,
+            use_ai=use_ai,
+            input_ref=f"raw_version:{version.id}",
+        )
         proposal["extraction"] = x.model_dump(mode="json")
         proposal["extraction_method"] = method
     return {"text": text, "signal": sig, "proposal": proposal}
@@ -132,7 +170,9 @@ def _to_review(db: Session, item: ImportItem | None, result: dict[str, Any]) -> 
         item.status = ImportItemStatus.NEEDS_REVIEW
 
 
-def _auto_ingest(db: Session, source: Source, doc: RawSourceDocument, version: RawSourceVersion, result: dict[str, Any]) -> None:
+def _auto_ingest(
+    db: Session, source: Source, doc: RawSourceDocument, version: RawSourceVersion, result: dict[str, Any]
+) -> None:
     sig: SignalResult = result["signal"]
     text: str = result["text"]
     proposal = result["proposal"]
@@ -158,11 +198,23 @@ def _auto_ingest(db: Session, source: Source, doc: RawSourceDocument, version: R
                 status = V.LIKELY_OPEN
                 reason = "Published as structured JobPosting data on the employer's site."
             else:
-                status = sig.recommendation if sig.recommendation in (V.NEW_UNREVIEWED, V.NEEDS_REVIEW, V.EXPIRED) else V.NEEDS_REVIEW
+                status = (
+                    sig.recommendation
+                    if sig.recommendation in (V.NEW_UNREVIEWED, V.NEEDS_REVIEW, V.EXPIRED)
+                    else V.NEEDS_REVIEW
+                )
                 reason = sig.reason
             v = create_vacancy(
-                db, x=x, source=source, document=doc, version=version, source_text=text, status=status,
-                classification=sig.primary if sig.primary in VACANCY_CLASSES else OpportunityClassification.DIRECT_VACANCY,
+                db,
+                x=x,
+                source=source,
+                document=doc,
+                version=version,
+                source_text=text,
+                status=status,
+                classification=sig.primary
+                if sig.primary in VACANCY_CLASSES
+                else OpportunityClassification.DIRECT_VACANCY,
                 reason=reason,
             )
             v = dedup.process_new_vacancy(db, v)
@@ -173,10 +225,14 @@ def _auto_ingest(db: Session, source: Source, doc: RawSourceDocument, version: R
         company_id = s.company_id
     if sig.primary in DISCUSSION_CLASSES:
         first_party = source.category.value in ("ATS_BOARD", "CAREER_PAGE", "JOB_API")
-        sentiment.store_observations(db, version, text, company_id=company_id, source_id=source.id, first_party=first_party)
+        sentiment.store_observations(
+            db, version, text, company_id=company_id, source_id=source.id, first_party=first_party
+        )
 
 
-def create_signal(db: Session, version: RawSourceVersion, sig: SignalResult, *, source_text: str, status: V | None = None) -> OpportunitySignal:
+def create_signal(
+    db: Session, version: RawSourceVersion, sig: SignalResult, *, source_text: str, status: V | None = None
+) -> OpportunitySignal:
     company_name = next((e.value for e in sig.entities if e.kind == "company"), None)
     comp = resolve_company(db, company_name) if company_name else None
     s = OpportunitySignal(
@@ -186,7 +242,12 @@ def create_signal(db: Session, version: RawSourceVersion, sig: SignalResult, *, 
         signal_type=sig.signal_type,
         confidence=sig.confidence,
         verification_recommendation=sig.recommendation,
-        status=status or (sig.recommendation if sig.recommendation in (V.POTENTIAL_LEAD, V.EXPIRED, V.NEEDS_REVIEW) else V.POTENTIAL_LEAD),
+        status=status
+        or (
+            sig.recommendation
+            if sig.recommendation in (V.POTENTIAL_LEAD, V.EXPIRED, V.NEEDS_REVIEW)
+            else V.POTENTIAL_LEAD
+        ),
         reason=sig.reason,
         ambiguity_flags=sig.ambiguity_flags,
         company_id=comp.id if comp else None,
@@ -202,7 +263,15 @@ def create_signal(db: Session, version: RawSourceVersion, sig: SignalResult, *, 
     db.add(s)
     db.flush()
     for e in sig.entities:
-        db.add(SignalEntity(signal_id=s.id, kind=e.kind, value=e.value[:2000], origin=FieldOrigin(e.origin), evidence_excerpt=e.excerpt[:2000]))
+        db.add(
+            SignalEntity(
+                signal_id=s.id,
+                kind=e.kind,
+                value=e.value[:2000],
+                origin=FieldOrigin(e.origin),
+                evidence_excerpt=e.excerpt[:2000],
+            )
+        )
     db.flush()
     return s
 
