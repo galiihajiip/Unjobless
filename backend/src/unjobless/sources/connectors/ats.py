@@ -41,7 +41,9 @@ SLUG = r"^[A-Za-z0-9][A-Za-z0-9_\-.]{0,99}$"
 class BoardConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     board: str = Field(pattern=SLUG, description="Board token / site name shown in the public job board URL.")
-    company_name: str | None = Field(default=None, max_length=200, description="Display name if the API omits it.")
+    company_name: str | None = Field(
+        default=None, max_length=200, description="Display name if the API omits it."
+    )
 
 
 def _get_json(ctx: CollectContext, url: str) -> Any:
@@ -74,7 +76,17 @@ def _iso(v: Any) -> datetime | None:
         return None
 
 
-def _item(native_id: str, url: str | None, apply_url: str | None, title: str, text: str, structured: dict[str, Any], published: datetime | None, lang: str | None, raw: dict[str, Any]) -> CollectedItem:
+def _item(
+    native_id: str,
+    url: str | None,
+    apply_url: str | None,
+    title: str,
+    text: str,
+    structured: dict[str, Any],
+    published: datetime | None,
+    lang: str | None,
+    raw: dict[str, Any],
+) -> CollectedItem:
     return CollectedItem(
         native_id=native_id,
         url=url,
@@ -121,7 +133,8 @@ class GreenhouseConnector(Connector):
                 title=j.get("title"),
                 company=j.get("company_name") or cfg.company_name,
                 locations=[loc] if loc else [],
-                department=", ".join(d.get("name", "") for d in j.get("departments") or [] if d.get("name")) or None,
+                department=", ".join(d.get("name", "") for d in j.get("departments") or [] if d.get("name"))
+                or None,
                 application_url=j.get("absolute_url"),
                 posting_url=j.get("absolute_url"),
                 published_at=j.get("first_published") or j.get("updated_at"),
@@ -129,7 +142,17 @@ class GreenhouseConnector(Connector):
                 description_text=text,
                 language=j.get("language"),
             )
-            yield _item(str(j["id"]), j.get("absolute_url"), j.get("absolute_url"), j.get("title") or "", text, structured, _iso(j.get("first_published") or j.get("updated_at")), j.get("language"), j)
+            yield _item(
+                str(j["id"]),
+                j.get("absolute_url"),
+                j.get("absolute_url"),
+                j.get("title") or "",
+                text,
+                structured,
+                _iso(j.get("first_published") or j.get("updated_at")),
+                j.get("language"),
+                j,
+            )
         ctx.listing_complete = True
 
     def health_check(self, ctx: CollectContext) -> HealthResult:
@@ -141,7 +164,14 @@ class GreenhouseConnector(Connector):
 
 
 LEVER_WORKPLACE = {"remote": "REMOTE", "hybrid": "HYBRID", "on-site": "ONSITE", "onsite": "ONSITE"}
-LEVER_INTERVAL = {"per-year-salary": "YEAR", "per-month-salary": "MONTH", "per-hour-wage": "HOUR", "per-week-salary": "WEEK", "per-day-wage": "DAY", "one-time": "PROJECT"}
+LEVER_INTERVAL = {
+    "per-year-salary": "YEAR",
+    "per-month-salary": "MONTH",
+    "per-hour-wage": "HOUR",
+    "per-week-salary": "WEEK",
+    "per-day-wage": "DAY",
+    "one-time": "PROJECT",
+}
 
 
 @register
@@ -165,7 +195,10 @@ class LeverConnector(Connector):
         data = _get_json(ctx, f"https://api.lever.co/v0/postings/{cfg.board}?mode=json")
         for j in data if isinstance(data, list) else []:
             ctx.check_cancel()
-            parts = [j.get("openingPlain") or "", j.get("descriptionBodyPlain") or j.get("descriptionPlain") or ""]
+            parts = [
+                j.get("openingPlain") or "",
+                j.get("descriptionBodyPlain") or j.get("descriptionPlain") or "",
+            ]
             for lst in j.get("lists") or []:
                 parts.append(f"{lst.get('text', '')}\n" + html_to_text(lst.get("content", "")))
             parts.append(j.get("additionalPlain") or "")
@@ -183,15 +216,38 @@ class LeverConnector(Connector):
                 application_url=j.get("applyUrl"),
                 posting_url=j.get("hostedUrl"),
                 published_at=_iso(j.get("createdAt")).isoformat() if _iso(j.get("createdAt")) else None,
-                salary={"min": sal.get("min"), "max": sal.get("max"), "currency": sal.get("currency"), "period": LEVER_INTERVAL.get(sal.get("interval", ""))} if sal else None,
+                salary={
+                    "min": sal.get("min"),
+                    "max": sal.get("max"),
+                    "currency": sal.get("currency"),
+                    "period": LEVER_INTERVAL.get(sal.get("interval", "")),
+                }
+                if sal
+                else None,
                 country=j.get("country"),
                 description_text=text,
             )
-            yield _item(str(j["id"]), j.get("hostedUrl"), j.get("applyUrl"), j.get("text") or "", text, structured, _iso(j.get("createdAt")), None, j)
+            yield _item(
+                str(j["id"]),
+                j.get("hostedUrl"),
+                j.get("applyUrl"),
+                j.get("text") or "",
+                text,
+                structured,
+                _iso(j.get("createdAt")),
+                None,
+                j,
+            )
         ctx.listing_complete = True
 
 
-ASHBY_EMPLOYMENT = {"FullTime": "FULL_TIME", "PartTime": "PART_TIME", "Intern": "INTERNSHIP", "Contract": "CONTRACT", "Temporary": "TEMPORARY"}
+ASHBY_EMPLOYMENT = {
+    "FullTime": "FULL_TIME",
+    "PartTime": "PART_TIME",
+    "Intern": "INTERNSHIP",
+    "Contract": "CONTRACT",
+    "Temporary": "TEMPORARY",
+}
 ASHBY_INTERVAL = {"1 YEAR": "YEAR", "1 MONTH": "MONTH", "1 HOUR": "HOUR", "1 WEEK": "WEEK", "1 DAY": "DAY"}
 
 
@@ -213,7 +269,9 @@ class AshbyConnector(Connector):
 
     def collect(self, ctx: CollectContext) -> Iterator[CollectedItem]:
         cfg: Any = ctx.config
-        data = _get_json(ctx, f"https://api.ashbyhq.com/posting-api/job-board/{cfg.board}?includeCompensation=true")
+        data = _get_json(
+            ctx, f"https://api.ashbyhq.com/posting-api/job-board/{cfg.board}?includeCompensation=true"
+        )
         for j in data.get("jobs", []):
             ctx.check_cancel()
             if j.get("isListed") is False:
@@ -224,7 +282,12 @@ class AshbyConnector(Connector):
             for tier in comp.get("compensationTiers") or []:
                 for c in tier.get("components") or []:
                     if c.get("compensationType") == "Salary" and (c.get("minValue") or c.get("maxValue")):
-                        salary = {"min": c.get("minValue"), "max": c.get("maxValue"), "currency": c.get("currencyCode"), "period": ASHBY_INTERVAL.get(c.get("interval") or "")}
+                        salary = {
+                            "min": c.get("minValue"),
+                            "max": c.get("maxValue"),
+                            "currency": c.get("currencyCode"),
+                            "period": ASHBY_INTERVAL.get(c.get("interval") or ""),
+                        }
                         break
                 if salary:
                     break
@@ -236,13 +299,26 @@ class AshbyConnector(Connector):
                 locations=[x for x in locs if x],
                 department=j.get("department") or j.get("team"),
                 employment_type=ASHBY_EMPLOYMENT.get(j.get("employmentType") or ""),
-                work_arrangement={"REMOTE": "REMOTE", "HYBRID": "HYBRID", "ONSITE": "ONSITE"}.get(wp) or ("REMOTE" if j.get("isRemote") else None),
+                work_arrangement={"REMOTE": "REMOTE", "HYBRID": "HYBRID", "ONSITE": "ONSITE"}.get(wp)
+                or ("REMOTE" if j.get("isRemote") else None),
                 application_url=j.get("applyUrl"),
                 posting_url=j.get("jobUrl"),
                 published_at=j.get("publishedAt"),
                 salary=salary,
-                compensation_summary=comp.get("compensationTierSummary") if j.get("shouldDisplayCompensationOnJobPostings") else None,
+                compensation_summary=comp.get("compensationTierSummary")
+                if j.get("shouldDisplayCompensationOnJobPostings")
+                else None,
                 description_text=text,
             )
-            yield _item(str(j["id"]), j.get("jobUrl"), j.get("applyUrl"), j.get("title") or "", text, structured, _iso(j.get("publishedAt")), None, j)
+            yield _item(
+                str(j["id"]),
+                j.get("jobUrl"),
+                j.get("applyUrl"),
+                j.get("title") or "",
+                text,
+                structured,
+                _iso(j.get("publishedAt")),
+                None,
+                j,
+            )
         ctx.listing_complete = True
