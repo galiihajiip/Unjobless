@@ -519,7 +519,25 @@ ID_ROLE_RE = re.compile(
 )
 
 
+ROLE_PREFIX = re.compile(r"^(?:(?:info|lowongan|loker|lowker|dicari|dibutuhkan|hiring|we(?:'re| are) hiring|now hiring|open recruitment|oprec)\s*:?\s*)+(?:an?\s+)?", re.I)
+ROLE_CUT = re.compile(r"\s+(?:at|di|for|untuk|with|dengan|in)\s+.*$|\s*[—–|(].*$|\s+-\s+.*$", re.I)
+
+
+def _clean_role(role: str) -> str:
+    r = ROLE_PREFIX.sub("", role.strip())
+    r = re.sub(r"^(?:an?|the)\s+", "", r, flags=re.I)
+    return ROLE_CUT.sub("", r).strip(" .,:;")
+
+
 def _role_guess(title: str | None, text: str) -> tuple[str, str, str] | None:
+    g = _role_guess_raw(title, text)
+    if g is None:
+        return None
+    cleaned = _clean_role(g[0])
+    return (cleaned, g[1], g[2]) if len(cleaned) >= 3 else None
+
+
+def _role_guess_raw(title: str | None, text: str) -> tuple[str, str, str] | None:
     if title and len(title) < 140:
         m = ROLE_RE.search(title)
         if m:
