@@ -42,7 +42,13 @@ def _t[S: StrEnum](pairs: Iterable[tuple[S, Iterable[S]]]) -> dict[S, frozenset[
 SS = SourceState
 SOURCE_STATE = Machine(
     "source_state",
-    _t([(SS.DISABLED, [SS.ENABLED]), (SS.ENABLED, [SS.PAUSED, SS.DISABLED]), (SS.PAUSED, [SS.ENABLED, SS.DISABLED])]),
+    _t(
+        [
+            (SS.DISABLED, [SS.ENABLED]),
+            (SS.ENABLED, [SS.PAUSED, SS.DISABLED]),
+            (SS.PAUSED, [SS.ENABLED, SS.DISABLED]),
+        ]
+    ),
 )
 ENABLEABLE_POLICIES = frozenset({PolicyStatus.APPROVED, PolicyStatus.RESTRICTED})
 
@@ -84,8 +90,23 @@ VERIFICATION = Machine(
     "verification",
     _t(
         [
-            (V.NEW_UNREVIEWED, [V.NEEDS_REVIEW, V.POTENTIAL_LEAD, V.LIKELY_OPEN, V.VERIFIED_OPEN, V.REJECTED_AS_IRRELEVANT, V.EXPIRED, V.STATUS_UNKNOWN, V.CLOSED]),
-            (V.NEEDS_REVIEW, [V.VERIFIED_OPEN, V.POTENTIAL_LEAD, V.REJECTED_AS_IRRELEVANT, V.LIKELY_OPEN, V.EXPIRED]),
+            (
+                V.NEW_UNREVIEWED,
+                [
+                    V.NEEDS_REVIEW,
+                    V.POTENTIAL_LEAD,
+                    V.LIKELY_OPEN,
+                    V.VERIFIED_OPEN,
+                    V.REJECTED_AS_IRRELEVANT,
+                    V.EXPIRED,
+                    V.STATUS_UNKNOWN,
+                    V.CLOSED,
+                ],
+            ),
+            (
+                V.NEEDS_REVIEW,
+                [V.VERIFIED_OPEN, V.POTENTIAL_LEAD, V.REJECTED_AS_IRRELEVANT, V.LIKELY_OPEN, V.EXPIRED],
+            ),
             (V.POTENTIAL_LEAD, [V.VERIFIED_OPEN, V.REJECTED_AS_IRRELEVANT, V.EXPIRED, V.NEEDS_REVIEW]),
             (V.LIKELY_OPEN, [V.VERIFIED_OPEN, V.STATUS_UNKNOWN, V.CLOSED, V.EXPIRED]),
             (V.VERIFIED_OPEN, [V.LIKELY_OPEN, V.STATUS_UNKNOWN, V.CLOSED, V.EXPIRED]),
