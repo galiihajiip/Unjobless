@@ -17,7 +17,7 @@
 ### Fetching
 - One **`SafeFetcher`** is the only code path allowed to make outbound HTTP requests to user- or source-supplied URLs.
   - http/https only, default ports 80/443 only (allowlist configurable);
-  - resolve DNS with dnspython, reject any non-global address (private, loopback, link-local, multicast, reserved, CGNAT, unspecified, IPv4-mapped IPv6, cloud metadata such as `169.254.169.254`, `fd00:ec2::254`);
+  - resolve DNS with the system resolver (`getaddrinfo`), reject any non-global address (private, loopback, link-local, multicast, reserved, CGNAT, unspecified, IPv4-mapped IPv6, cloud metadata such as `169.254.169.254`, `fd00:ec2::254`);
   - connect to the **validated IP** (pinning) with SNI/Host set to the original hostname, which defeats DNS rebinding between check and connect;
   - manual redirect handling: each hop re-validated, max 5 hops;
   - connect/read/total timeouts; streamed body with byte cap (default 5 MB) and decompression cap; content-type allowlist;
