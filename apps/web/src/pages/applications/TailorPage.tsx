@@ -101,7 +101,7 @@ function ClaimsReview({ t, onNewVersion }: { t: Tailored; onNewVersion: (id: num
   if (!claims.length) return <Card><p className="secondary">No wording changes proposed — only ordering. Check the preview.</p></Card>
   return (
     <div className="stack">
-      {claims.map((c) => <ClaimCard key={c.id} c={c} decision={c.id in decisions ? decisions[c.id] : c.accepted} edit={edits[c.id]} onDecide={(v, confirmIssues) => setDecisions({ ...decisions, [c.id]: v, ...(confirmIssues ? { [`${c.id}:confirm_issues`]: true } : {}) })} onEdit={(txt) => setEdits({ ...edits, [c.id]: txt })} />)}
+      {claims.map((c) => <ClaimCard key={c.id} c={c} decision={c.id in decisions ? (decisions[c.id] ?? null) : c.accepted} edit={edits[c.id]} onDecide={(v, confirmIssues) => setDecisions({ ...decisions, [c.id]: v, ...(confirmIssues ? { [`${c.id}:confirm_issues`]: true } : {}) })} onEdit={(txt) => setEdits({ ...edits, [c.id]: txt })} />)}
       <div className="row">
         <Button variant="primary" loading={save.isPending} disabled={!Object.keys(decisions).length && !Object.keys(edits).length} onClick={() => save.mutate(false)}>Save decisions</Button>
         <Button loading={save.isPending} onClick={() => save.mutate(true)}>Save & mark final</Button>
