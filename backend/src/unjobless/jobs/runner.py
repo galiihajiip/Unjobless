@@ -200,7 +200,18 @@ def execute_run(
         get_secret=get_secret,
         is_cancelled=cancelled,
         log=log.bind(source=source.key, run=run.id),
+        source_domain=source.domain,
+        min_interval_seconds=60.0 / max(1, source.rate_limit_per_minute),
     )
+    from unjobless.db.session import get_sessionmaker
+    from unjobless.fetch.politeness import polite_get
+
+    polite_db = get_sessionmaker()()
+
+    def _polite(url: str, **kw: Any) -> Any:
+        return polite_get(polite_db, fetcher, url, min_interval_seconds=ctx.min_interval_seconds, **kw)
+
+    ctx.polite_get = _polite
     new_versions: list[int] = []
     try:
         connector = connector_cls()
@@ -289,6 +300,7 @@ def execute_run(
         _fail_or_retry(run, source, "error", f"{type(exc).__name__}: {str(exc)[:500]}", delay)
         _derive_failure_health(db, source)
     finally:
+        polite_db.close()
         if own_fetcher:
             fetcher.close()
     db.commit()
