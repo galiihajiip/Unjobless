@@ -215,7 +215,7 @@ class LeverConnector(Connector):
                 work_arrangement=LEVER_WORKPLACE.get(str(j.get("workplaceType") or "").lower()),
                 application_url=j.get("applyUrl"),
                 posting_url=j.get("hostedUrl"),
-                published_at=_iso(j.get("createdAt")).isoformat() if _iso(j.get("createdAt")) else None,
+                published_at=(lambda d: d.isoformat() if d else None)(_iso(j.get("createdAt"))),
                 salary={
                     "min": sal.get("min"),
                     "max": sal.get("max"),
