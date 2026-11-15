@@ -62,6 +62,7 @@ SECTION_HEADS = {
     "stages": r"(selection process|hiring process|tahapan seleksi|proses seleksi|alur rekrutmen)",
     "nice": r"(nice to have|preferred|plus points?|bonus points?|diutamakan|nilai tambah)",
 }
+COMPANY_RE = re.compile(r"\b(?:PT|CV|Tbk|Perum|PD)\.?\s+[A-Z][\w&.-]*(?:\s+(?!di\b|in\b|at\b)[A-Z][\w&.-]*){0,4}")
 HEAD_RE = re.compile(r"^\s*(?:#+\s*)?(" + "|".join(SECTION_HEADS.values()) + r")\s*:?\s*$", re.I | re.M)
 
 
@@ -106,6 +107,17 @@ def rules_extract(text: str, *, title: str | None = None, today: date | None = N
     if title:
         e["title"] = title.strip()[:300]
         add("title", title, 0.95)
+    else:
+        from unjobless.intelligence.signals import _role_guess
+
+        role = _role_guess(None, full)
+        if role:
+            e["title"] = role[0][:300]
+            add("title", role[2], 0.6 if role[1] == "EXPLICIT" else 0.4, role[1])
+    cm = COMPANY_RE.search(full)
+    if cm:
+        e["company"] = cm.group(0).strip(" .,")[:300]
+        add("company", cm.group(0), 0.75)
     m = N.employment_type(full)
     if m:
         e["employment_type"] = m.value
