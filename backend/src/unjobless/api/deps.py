@@ -70,4 +70,11 @@ Owner = Annotated[OwnerSession, Depends(require_owner)]
 
 
 def client_ip(request: Request) -> str | None:
-    return request.client.host if request.client else None
+    """Client IP as seen by the app (uvicorn applies X-Forwarded-For only from trusted proxies)."""
+    import ipaddress
+
+    host = request.client.host if request.client else None
+    try:
+        return str(ipaddress.ip_address(host)) if host else None
+    except ValueError:
+        return None
