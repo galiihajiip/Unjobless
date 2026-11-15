@@ -228,6 +228,7 @@ class TailoredResume(Base):
     generation_settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     ai_task_run_id: Mapped[int | None] = mapped_column(ForeignKey("ai_task_runs.id", ondelete="SET NULL"))
     finalized: Mapped[bool] = mapped_column(nullable=False, default=False)
+    template: Mapped[str] = mapped_column(String(40), nullable=False, default="ats_classic", server_default="ats_classic")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
