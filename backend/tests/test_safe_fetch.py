@@ -24,9 +24,26 @@ def resolver_map(mapping):
 @pytest.mark.parametrize(
     "ip",
     [
-        "127.0.0.1", "10.0.0.5", "172.16.3.4", "192.168.1.1", "169.254.169.254", "100.64.0.1", "100.100.100.200",
-        "0.0.0.0", "224.0.0.1", "240.0.0.1", "255.255.255.255", "::1", "fe80::1", "fd00:ec2::254", "fc00::1",
-        "::ffff:127.0.0.1", "::ffff:10.0.0.1", "2002:7f00:1::", "64:ff9b::a00:1", "198.18.0.1",
+        "127.0.0.1",
+        "10.0.0.5",
+        "172.16.3.4",
+        "192.168.1.1",
+        "169.254.169.254",
+        "100.64.0.1",
+        "100.100.100.200",
+        "0.0.0.0",
+        "224.0.0.1",
+        "240.0.0.1",
+        "255.255.255.255",
+        "::1",
+        "fe80::1",
+        "fd00:ec2::254",
+        "fc00::1",
+        "::ffff:127.0.0.1",
+        "::ffff:10.0.0.1",
+        "2002:7f00:1::",
+        "64:ff9b::a00:1",
+        "198.18.0.1",
     ],
 )
 def test_non_public_ips_rejected(ip):
@@ -67,7 +84,11 @@ def test_static_url_rejections(url, code):
 
 def test_dns_resolving_to_private_is_blocked():
     with pytest.raises(BlockedURL) as e:
-        validate_url("https://evil.example/", resolver=resolver_map({"evil.example": ["93.184.215.14", "10.0.0.1"]}), allowed_ports=[443])
+        validate_url(
+            "https://evil.example/",
+            resolver=resolver_map({"evil.example": ["93.184.215.14", "10.0.0.1"]}),
+            allowed_ports=[443],
+        )
     assert e.value.code == "private_address"
 
 
@@ -78,7 +99,11 @@ def test_unresolvable_host_blocked():
 
 
 def make_fetcher(handler, mapping=None, **kw):
-    return SafeFetcher(resolver=resolver_map(mapping or {"jobs.example": PUBLIC}), transport=httpx.MockTransport(handler), **kw)
+    return SafeFetcher(
+        resolver=resolver_map(mapping or {"jobs.example": PUBLIC}),
+        transport=httpx.MockTransport(handler),
+        **kw,
+    )
 
 
 def test_connects_to_pinned_ip_with_host_header():
@@ -122,7 +147,10 @@ def test_dns_rebinding_between_hops_is_revalidated():
             return httpx.Response(302, headers={"location": "https://rebind.example/x"})
         return httpx.Response(200, text="should never be reached")
 
-    with make_fetcher(handler, {"jobs.example": PUBLIC, "rebind.example": "127.0.0.1"}) as f, pytest.raises(BlockedURL):
+    with (
+        make_fetcher(handler, {"jobs.example": PUBLIC, "rebind.example": "127.0.0.1"}) as f,
+        pytest.raises(BlockedURL),
+    ):
         f.get("https://jobs.example/start")
 
 
@@ -148,7 +176,9 @@ def test_decompression_bomb_capped():
     bomb = gzip.compress(b"0" * 5_000_000)
 
     def handler(request):
-        return httpx.Response(200, headers={"content-type": "text/plain", "content-encoding": "gzip"}, content=bomb)
+        return httpx.Response(
+            200, headers={"content-type": "text/plain", "content-encoding": "gzip"}, content=bomb
+        )
 
     with make_fetcher(handler, max_bytes=10_000) as f:
         r = f.get("https://jobs.example/bomb")
@@ -190,7 +220,10 @@ def test_sensitive_request_headers_not_forwarded():
         return httpx.Response(200, headers={"content-type": "text/html", "set-cookie": "a=b"}, text="ok")
 
     with make_fetcher(handler) as f:
-        r = f.get("https://jobs.example/", extra_headers={"Authorization": "Bearer x", "Cookie": "s=1", "If-None-Match": "abc"})
+        r = f.get(
+            "https://jobs.example/",
+            extra_headers={"Authorization": "Bearer x", "Cookie": "s=1", "If-None-Match": "abc"},
+        )
     assert "authorization" not in seen and "cookie" not in seen
     assert seen["if-none-match"] == "abc"
     assert "set-cookie" not in r.headers
@@ -202,7 +235,11 @@ def test_blocked_events_reported_without_query_string():
     def handler(request):
         return httpx.Response(200, text="x")
 
-    f = SafeFetcher(resolver=resolver_map({}), transport=httpx.MockTransport(handler), on_event=lambda *a: events.append(a))
+    f = SafeFetcher(
+        resolver=resolver_map({}),
+        transport=httpx.MockTransport(handler),
+        on_event=lambda *a: events.append(a),
+    )
     with pytest.raises(BlockedURL):
         f.get("http://127.0.0.1/admin?token=secret")
     assert events and "secret" not in repr(events)
