@@ -74,7 +74,9 @@ def backoff_seconds(attempt: int, base: float, cap: float) -> float:
     return max(base / 2, random.uniform(0, upper))
 
 
-def enqueue_source_run(db: Session, source: Source, trigger: RunTrigger, *, key: str | None = None) -> SourceRun:
+def enqueue_source_run(
+    db: Session, source: Source, trigger: RunTrigger, *, key: str | None = None
+) -> SourceRun:
     if trigger == RunTrigger.MANUAL and source.state != SourceState.ENABLED:
         raise ValidationFailed("Enable this source before running it.", code="source_not_enabled")
     ok, reason = can_collect(db, source)
@@ -146,7 +148,13 @@ def claim_run(db: Session, run_id: int) -> SourceRun | None:
     return run
 
 
-def execute_run(db: Session, run_id: int, *, fetcher: SafeFetcher | None = None, now_fn: Callable[[], float] = time.monotonic) -> RunOutcome | None:
+def execute_run(
+    db: Session,
+    run_id: int,
+    *,
+    fetcher: SafeFetcher | None = None,
+    now_fn: Callable[[], float] = time.monotonic,
+) -> RunOutcome | None:
     """Execute one claimed run to a terminal (or retry-scheduled) state. Safe to call twice."""
     run = claim_run(db, run_id)
     if run is None:
@@ -202,7 +210,15 @@ def execute_run(db: Session, run_id: int, *, fetcher: SafeFetcher | None = None,
                 with db.begin_nested():
                     res = store_item(db, source, item)
                     outcome = res.outcome
-                    db.add(SourceRunItem(run_id=run.id, external_id=item.native_id, url=item.url, outcome=outcome, raw_version_id=res.version.id))
+                    db.add(
+                        SourceRunItem(
+                            run_id=run.id,
+                            external_id=item.native_id,
+                            url=item.url,
+                            outcome=outcome,
+                            raw_version_id=res.version.id,
+                        )
+                    )
                 if outcome == RunItemOutcome.NEW:
                     run.new += 1
                     new_versions.append(res.version.id)
@@ -213,7 +229,15 @@ def execute_run(db: Session, run_id: int, *, fetcher: SafeFetcher | None = None,
                     run.unchanged += 1
             except Exception as exc:  # one bad item never fails the run
                 run.errors += 1
-                db.add(SourceRunItem(run_id=run.id, external_id=item.native_id, url=item.url, outcome=RunItemOutcome.ERROR, error=f"{type(exc).__name__}: {str(exc)[:300]}"))
+                db.add(
+                    SourceRunItem(
+                        run_id=run.id,
+                        external_id=item.native_id,
+                        url=item.url,
+                        outcome=RunItemOutcome.ERROR,
+                        error=f"{type(exc).__name__}: {str(exc)[:300]}",
+                    )
+                )
             if n % HEARTBEAT_EVERY_ITEMS == 0:
                 run.heartbeat_at = utcnow()
                 db.commit()
@@ -232,14 +256,21 @@ def execute_run(db: Session, run_id: int, *, fetcher: SafeFetcher | None = None,
                 cursor_row.cursor = ctx.new_cursor
         source.last_success_at = utcnow()
         source.consecutive_failures = 0
-        _set_health(db, source, SourceHealth.DEGRADED if run.errors else SourceHealth.HEALTHY, f"{run.errors} item errors" if run.errors else None)
+        _set_health(
+            db,
+            source,
+            SourceHealth.DEGRADED if run.errors else SourceHealth.HEALTHY,
+            f"{run.errors} item errors" if run.errors else None,
+        )
         _schedule_next(source)
     except CollectionCancelled:
         _transition(run, RunStatus.CANCELLED)
         run.finished_at = utcnow()
         _schedule_next(source)
     except SourceRateLimited as exc:
-        delay = exc.retry_after or backoff_seconds(run.attempt, info.retry.base_delay_seconds, info.retry.max_delay_seconds)
+        delay = exc.retry_after or backoff_seconds(
+            run.attempt, info.retry.base_delay_seconds, info.retry.max_delay_seconds
+        )
         _set_health(db, source, SourceHealth.RATE_LIMITED, str(exc)[:300])
         _fail_or_retry(run, source, "rate_limited", str(exc), delay, force_retry=True)
     except SourceUnavailable as exc:
@@ -272,7 +303,9 @@ def _schedule_next(source: Source) -> None:
         source.next_run_at = utcnow() + timedelta(seconds=source.schedule_interval_seconds)
 
 
-def _fail_or_retry(run: SourceRun, source: Source, code: str, message: str, delay: float, *, force_retry: bool = False) -> None:
+def _fail_or_retry(
+    run: SourceRun, source: Source, code: str, message: str, delay: float, *, force_retry: bool = False
+) -> None:
     run.error_code, run.error_message = code, message[:1000]
     if run.attempt < run.max_attempts or (force_retry and run.attempt < run.max_attempts + 2):
         _transition(run, RunStatus.RETRY_SCHEDULED)
@@ -297,7 +330,9 @@ def scheduler_tick(db: Session) -> list[int]:
     to_deliver: list[int] = []
 
     # 1. Stale RUNNING runs (worker crashed / killed): retry or fail.
-    for run in db.execute(select(SourceRun).where(SourceRun.status == RunStatus.RUNNING).with_for_update(skip_locked=True)).scalars():
+    for run in db.execute(
+        select(SourceRun).where(SourceRun.status == RunStatus.RUNNING).with_for_update(skip_locked=True)
+    ).scalars():
         last = run.heartbeat_at or run.started_at or run.created_at
         if last + timedelta(seconds=run.timeout_seconds * STALE_FACTOR) < now:
             source = db.get(Source, run.source_id)
@@ -314,27 +349,38 @@ def scheduler_tick(db: Session) -> list[int]:
         to_deliver.append(run.id)
 
     # 3. Due sources.
-    due = db.execute(
-        select(Source).where(
-            Source.state == SourceState.ENABLED,
-            Source.is_system.is_(False),
-            Source.schedule_interval_seconds.is_not(None),
-            Source.next_run_at <= now,
+    due = (
+        db.execute(
+            select(Source).where(
+                Source.state == SourceState.ENABLED,
+                Source.is_system.is_(False),
+                Source.schedule_interval_seconds.is_not(None),
+                Source.next_run_at <= now,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for src in due:
         if active_run(db, src.id) is not None:
             continue
         ok, _ = can_collect(db, src)
         if not ok:
             continue
-        run = enqueue_source_run(db, src, RunTrigger.SCHEDULE, key=f"schedule:{src.id}:{src.next_run_at.isoformat() if src.next_run_at else now.isoformat()}")
+        run = enqueue_source_run(
+            db,
+            src,
+            RunTrigger.SCHEDULE,
+            key=f"schedule:{src.id}:{src.next_run_at.isoformat() if src.next_run_at else now.isoformat()}",
+        )
         src.next_run_at = now + timedelta(seconds=src.schedule_interval_seconds or 3600)
         to_deliver.append(run.id)
 
     # 4. Re-deliver QUEUED runs that may have lost their queue message.
     lost = db.execute(
-        select(SourceRun.id).where(SourceRun.status == RunStatus.QUEUED, SourceRun.created_at < now - timedelta(minutes=2))
+        select(SourceRun.id).where(
+            SourceRun.status == RunStatus.QUEUED, SourceRun.created_at < now - timedelta(minutes=2)
+        )
     ).scalars()
     to_deliver.extend(i for i in lost if i not in to_deliver)
     db.commit()
@@ -345,7 +391,10 @@ def reset_source_runs_for_disable(db: Session, source_id: int) -> None:
     """When a source is disabled/paused, cancel queued work and request cancellation of running work."""
     db.execute(
         update(SourceRun)
-        .where(SourceRun.source_id == source_id, SourceRun.status.in_([RunStatus.QUEUED, RunStatus.RETRY_SCHEDULED]))
+        .where(
+            SourceRun.source_id == source_id,
+            SourceRun.status.in_([RunStatus.QUEUED, RunStatus.RETRY_SCHEDULED]),
+        )
         .values(status=RunStatus.CANCELLED, finished_at=utcnow(), error_code="source_stopped")
     )
     db.execute(
@@ -373,5 +422,7 @@ def run_summary(run: SourceRun) -> dict[str, Any]:
         "errors": run.errors,
         "error_code": run.error_code,
         "error_message": run.error_message,
-        "duration_seconds": (run.finished_at - run.started_at).total_seconds() if run.finished_at and run.started_at else None,
+        "duration_seconds": (run.finished_at - run.started_at).total_seconds()
+        if run.finished_at and run.started_at
+        else None,
     }
