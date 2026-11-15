@@ -2,7 +2,7 @@ import { Columns2, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Alert, Badge, Button, Card, EmptyState, ErrorState, LoadingCards, Meter, PageHeader } from '@/components/ui'
-import { get, post, put } from '@/lib/api'
+import { post, put } from '@/lib/api'
 import { humanize } from '@/lib/format'
 import { errorMessage, useAction, useGet } from '@/lib/queries'
 import type { Comparison, Paged, VacancyCard } from '@/lib/types'
@@ -115,7 +115,7 @@ function fmt(v: unknown): string {
   if (typeof v === 'boolean') return v ? 'Yes' : 'No'
   if (Array.isArray(v)) return v.length ? v.join(', ') : 'None listed'
   if (typeof v === 'object') return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${humanize(k)}: ${x ?? 'unknown'}`).join(' · ')
-  return humanize(String(v)) === String(v).toLowerCase() ? String(v) : String(v)
+  return /^[A-Z_]+$/.test(String(v)) ? humanize(String(v)) : String(v)
 }
 
 function Picker({ onPick }: { onPick: (ids: number[]) => void }) {
@@ -162,4 +162,3 @@ function History({ items }: { items?: { id: number; created_at: string; lean: st
   )
 }
 
-export const _getForTests = get
