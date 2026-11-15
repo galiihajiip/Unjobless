@@ -322,7 +322,7 @@ def _fetch_and_store(db: Session, item: ImportItem, f: SafeFetcher) -> None:
         CollectedItem(
             native_id=None,
             url=res.url,
-            canonical_url=canonicalize_url(canonical),
+            canonical_url=canonicalize_url(str(canonical)),
             content_type=res.content_type,
             raw_text=html,
             extracted_text=text,
