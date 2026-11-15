@@ -129,8 +129,22 @@ def analyze(db: Session, version: RawSourceVersion, *, use_ai: bool = True) -> d
 
 
 def process_version(db: Session, version_id: int, *, use_ai: bool = True) -> None:
+    from unjobless.domain.enums import ImportItemStatus
+
     version = db.get(RawSourceVersion, version_id)
-    if version is None or version.processing_status == ProcessingStatus.SUCCEEDED:
+    if version is None:
+        return
+    if version.processing_status == ProcessingStatus.SUCCEEDED:
+        # Identical content re-imported: the raw version is shared, but each new import item still
+        # needs its own review proposal.
+        pending = db.execute(
+            select(ImportItem).where(ImportItem.raw_version_id == version.id, ImportItem.status == ImportItemStatus.EXTRACTED)
+        ).scalars().all()
+        if not pending:
+            return
+        result = analyze(db, version, use_ai=use_ai)
+        for it in pending:
+            _to_review(db, it, result)
         return
     doc = db.get(RawSourceDocument, version.document_id)
     source = db.get(Source, doc.source_id) if doc else None
@@ -144,9 +158,11 @@ def process_version(db: Session, version_id: int, *, use_ai: bool = True) -> Non
         version.classification = sig.primary
         version.classification_detail = result["proposal"]["classification"]
         version.language = version.language or result["proposal"]["language"]
-        item = db.execute(select(ImportItem).where(ImportItem.raw_version_id == version.id)).scalars().first()
-        if source.is_system or item is not None:
-            _to_review(db, item, result)
+        items = db.execute(select(ImportItem).where(ImportItem.raw_version_id == version.id)).scalars().all()
+        if source.is_system or items:
+            for item in items:
+                if item.status in (ImportItemStatus.EXTRACTED, ImportItemStatus.NEEDS_REVIEW):
+                    _to_review(db, item, result)
         else:
             _auto_ingest(db, source, doc, version, result)
         version.processing_status = ProcessingStatus.SUCCEEDED
