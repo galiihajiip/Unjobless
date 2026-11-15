@@ -1,7 +1,5 @@
-{
-	# Optional e-mail for the ACME (Let's Encrypt) account.
-	email {$ACME_EMAIL:}
-}
+# Automatic HTTPS: Caddy obtains and renews certificates for UNJOBLESS_DOMAIN (ACME, no email required).
+# For "localhost" it uses its own local CA.
 
 {$UNJOBLESS_DOMAIN:localhost} {
 	encode zstd gzip
