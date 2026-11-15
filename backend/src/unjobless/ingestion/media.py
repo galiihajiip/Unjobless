@@ -13,6 +13,7 @@ Failures never lose the original import.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import re
 import resource
@@ -97,10 +98,8 @@ def validate_upload(data: bytes, declared: str | None, filename: str | None) -> 
 
 def _limits() -> None:  # runs in the child process before exec
     resource.setrlimit(resource.RLIMIT_CPU, (OCR_CPU_SECONDS, OCR_CPU_SECONDS))
-    try:
+    with contextlib.suppress(ValueError, OSError):  # RLIMIT_AS unsupported on some platforms (e.g. macOS)
         resource.setrlimit(resource.RLIMIT_AS, (OCR_MEMORY_BYTES, OCR_MEMORY_BYTES))
-    except (ValueError, OSError):  # not supported on some platforms (e.g. macOS)
-        pass
 
 
 def ocr_available() -> bool:
@@ -113,7 +112,10 @@ def run_tesseract(image_path: Path, langs: str = "ind+eng") -> tuple[str, float 
         raise RuntimeError("OCR engine (tesseract) is not installed in this environment.")
     proc = subprocess.run(  # noqa: S603 - fixed binary, no shell, file path we created
         [exe, str(image_path), "stdout", "-l", langs, "--psm", "3"],
-        capture_output=True, timeout=OCR_TIMEOUT, preexec_fn=_limits, check=False,
+        capture_output=True,
+        timeout=OCR_TIMEOUT,
+        preexec_fn=_limits,
+        check=False,
     )
     if proc.returncode != 0:
         # retry with English only if Indonesian traineddata is missing
@@ -150,7 +152,10 @@ def ocr_pdf(data: bytes) -> str:
         pdf.write_bytes(data)
         subprocess.run(  # noqa: S603
             [exe, "-r", "200", "-l", str(OCR_PDF_PAGES), "-png", str(pdf), str(Path(tmp) / "p")],
-            capture_output=True, timeout=OCR_TIMEOUT, preexec_fn=_limits, check=True,
+            capture_output=True,
+            timeout=OCR_TIMEOUT,
+            preexec_fn=_limits,
+            check=True,
         )
         texts = []
         for img in sorted(Path(tmp).glob("p*.png")):
@@ -180,7 +185,12 @@ class MediaResult:
 def extract_media_text(data: bytes, mime: str) -> MediaResult:
     if mime in IMAGE_MIMES:
         if not ocr_available():
-            return MediaResult(ProcessingStatus.SKIPPED, None, None, "OCR is not available on this server; paste the poster text manually.")
+            return MediaResult(
+                ProcessingStatus.SKIPPED,
+                None,
+                None,
+                "OCR is not available on this server; paste the poster text manually.",
+            )
         suffix = IMAGE_MIMES[mime]
         with tempfile.NamedTemporaryFile(suffix=suffix) as f:
             f.write(data)
@@ -190,25 +200,68 @@ def extract_media_text(data: bytes, mime: str) -> MediaResult:
     if mime == "application/pdf":
         text, warnings = pdf_text(data)
         if len(text) >= 40:
-            return MediaResult(ProcessingStatus.SUCCEEDED, text, TranscriptionKind.PDF_TEXT, "; ".join(warnings) or None)
+            return MediaResult(
+                ProcessingStatus.SUCCEEDED, text, TranscriptionKind.PDF_TEXT, "; ".join(warnings) or None
+            )
         try:
-            return MediaResult(ProcessingStatus.SUCCEEDED, ocr_pdf(data), TranscriptionKind.OCR, "Scanned PDF: text produced by OCR.")
+            return MediaResult(
+                ProcessingStatus.SUCCEEDED,
+                ocr_pdf(data),
+                TranscriptionKind.OCR,
+                "Scanned PDF: text produced by OCR.",
+            )
         except Exception as exc:
-            return MediaResult(ProcessingStatus.SKIPPED, None, None, f"No text layer and OCR unavailable: {exc}")
+            return MediaResult(
+                ProcessingStatus.SKIPPED, None, None, f"No text layer and OCR unavailable: {exc}"
+            )
     if mime in ("text/vtt", "application/x-subrip"):
-        return MediaResult(ProcessingStatus.SUCCEEDED, parse_captions(data.decode("utf-8", errors="replace")), TranscriptionKind.CAPTION, None)
+        return MediaResult(
+            ProcessingStatus.SUCCEEDED,
+            parse_captions(data.decode("utf-8", errors="replace")),
+            TranscriptionKind.CAPTION,
+            None,
+        )
     if mime == "text/plain":
-        return MediaResult(ProcessingStatus.SUCCEEDED, clean_text(data.decode("utf-8", errors="replace")), TranscriptionKind.USER_PROVIDED, None)
+        return MediaResult(
+            ProcessingStatus.SUCCEEDED,
+            clean_text(data.decode("utf-8", errors="replace")),
+            TranscriptionKind.USER_PROVIDED,
+            None,
+        )
     if mime in AV_MIMES:
-        return MediaResult(ProcessingStatus.SKIPPED, None, None, "Speech transcription is not configured. Paste a transcript or upload captions instead.")
+        return MediaResult(
+            ProcessingStatus.SKIPPED,
+            None,
+            None,
+            "Speech transcription is not configured. Paste a transcript or upload captions instead.",
+        )
     return MediaResult(ProcessingStatus.FAILED, None, None, "Unsupported media type.")
 
 
-def attach_media(db: Session, version: RawSourceVersion, data: bytes, mime: str, *, url: str | None = None) -> SourceMediaAsset:
-    ref, sha = get_filestore().put(data, namespace="media", suffix=IMAGE_MIMES.get(mime) or DOC_MIMES.get(mime) or TEXT_MIMES.get(mime, ""))
+def attach_media(
+    db: Session, version: RawSourceVersion, data: bytes, mime: str, *, url: str | None = None
+) -> SourceMediaAsset:
+    ref, sha = get_filestore().put(
+        data,
+        namespace="media",
+        suffix=IMAGE_MIMES.get(mime) or DOC_MIMES.get(mime) or TEXT_MIMES.get(mime, ""),
+    )
     asset = SourceMediaAsset(
-        version_id=version.id, kind="image" if mime.startswith("image/") else "pdf" if mime == "application/pdf" else "audio_video" if mime in AV_MIMES else "text",
-        url=url, blob_ref=ref, mime=mime, sha256=sha, byte_size=len(data), permitted_download=True, processing_status=ProcessingStatus.QUEUED,
+        version_id=version.id,
+        kind="image"
+        if mime.startswith("image/")
+        else "pdf"
+        if mime == "application/pdf"
+        else "audio_video"
+        if mime in AV_MIMES
+        else "text",
+        url=url,
+        blob_ref=ref,
+        mime=mime,
+        sha256=sha,
+        byte_size=len(data),
+        permitted_download=True,
+        processing_status=ProcessingStatus.QUEUED,
     )
     db.add(asset)
     db.flush()
@@ -231,12 +284,19 @@ def process_media_asset(media_id: int) -> None:
         asset.processing_status = res.status
         asset.processing_error = res.message
         if res.text and res.kind and version is not None:
-            db.add(ContentTranscription(
-                version_id=version.id, media_id=asset.id, kind=res.kind,
-                origin=TextOrigin.ORIGINAL if res.kind in (TranscriptionKind.PDF_TEXT, TranscriptionKind.CAPTION) else TextOrigin.MACHINE_GENERATED,
-                text=res.text[:200_000], engine="tesseract" if res.kind == TranscriptionKind.OCR else res.kind.value.lower(),
-                language=guess_language(res.text),
-            ))
+            db.add(
+                ContentTranscription(
+                    version_id=version.id,
+                    media_id=asset.id,
+                    kind=res.kind,
+                    origin=TextOrigin.ORIGINAL
+                    if res.kind in (TranscriptionKind.PDF_TEXT, TranscriptionKind.CAPTION)
+                    else TextOrigin.MACHINE_GENERATED,
+                    text=res.text[:200_000],
+                    engine="tesseract" if res.kind == TranscriptionKind.OCR else res.kind.value.lower(),
+                    language=guess_language(res.text),
+                )
+            )
             version.processing_status = ProcessingStatus.QUEUED  # re-analyse with the new text
     from unjobless.jobs.queue import defer
 
