@@ -29,7 +29,7 @@ def enum_col(enum_cls: type[StrEnum], **kw: Any) -> Any:
     return Enum(
         enum_cls,
         native_enum=False,
-        create_constraint=True,
+        create_constraint=False,
         length=40,
         name=f"{enum_cls.__name__.lower()}",
         values_callable=lambda e: [m.value for m in e],
