@@ -27,6 +27,8 @@ def html_to_text(raw_html: str) -> str:
     """Readable text from HTML (scripts/styles removed). Keeps paragraph breaks and list items."""
     if not raw_html:
         return ""
+    if "<" not in raw_html and "&lt;" in raw_html:
+        raw_html = html.unescape(raw_html)  # entity-escaped HTML (e.g. Greenhouse `content`)
     if "<" not in raw_html:
         return clean_text(html.unescape(raw_html))
     tree = HTMLParser(raw_html)
