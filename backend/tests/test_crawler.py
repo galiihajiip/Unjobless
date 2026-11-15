@@ -38,9 +38,24 @@ def routes(robots=ROBOTS_OK, job2=JOB2):
 CFG = {"start_urls": ["https://www.acme.example/careers"], "allowed_path_prefixes": ["/careers"], "job_url_pattern": r"/careers/[a-z-]+$"}
 
 
+@pytest.fixture(autouse=True)
+def _reset_host_state(engine):
+    """Politeness state is committed on its own connection; reset it between tests."""
+    from sqlalchemy import text
+
+    with engine.begin() as c:
+        c.execute(text("DELETE FROM host_rate_state"))
+    yield
+    with engine.begin() as c:
+        c.execute(text("DELETE FROM host_rate_state"))
+
+
 @pytest.fixture
 def src(db):
-    return approved_source(db, key="acme-careers", connector_type="career_page", config=CFG, domain="acme.example")
+    s = approved_source(db, key="acme-careers", connector_type="career_page", config=CFG, domain="acme.example")
+    s.rate_limit_per_minute = 600  # 0.1s between requests in tests
+    db.flush()
+    return s
 
 
 def run_with(db, src, fetcher):
@@ -48,7 +63,7 @@ def run_with(db, src, fetcher):
     return run, runner.execute_run(db, run.id, fetcher=fetcher)
 
 
-def test_crawls_only_enabled_domain_and_paths(db, src, clean_db):
+def test_crawls_only_enabled_domain_and_paths(db, src):
     f = FakeFetcher(routes())
     run, out = run_with(db, src, f)
     assert out.status == RunStatus.SUCCEEDED, run.error_message
@@ -56,7 +71,7 @@ def test_crawls_only_enabled_domain_and_paths(db, src, clean_db):
     assert not any("evil.example" in c or "/blog/" in c for c in f.calls)
 
 
-def test_jsonld_parsed_without_invention(db, src, clean_db):
+def test_jsonld_parsed_without_invention(db, src):
     from unjobless.db.models import RawSourceVersion
 
     run, out = run_with(db, src, FakeFetcher(routes()))
@@ -69,19 +84,19 @@ def test_jsonld_parsed_without_invention(db, src, clean_db):
     assert other.structured_data is None
 
 
-def test_robots_disallow_blocks_listing(db, src, clean_db):
+def test_robots_disallow_blocks_listing(db, src):
     run, out = run_with(db, src, FakeFetcher(routes(robots="User-agent: *\nDisallow: /careers")))
     assert out.status == RunStatus.FAILED and run.error_code == "unavailable"
 
 
-def test_access_wall_reported_not_bypassed(db, src, clean_db):
+def test_access_wall_reported_not_bypassed(db, src):
     r = routes()
     r["https://www.acme.example/careers"] = (200, "text/html", WALL)
     run, out = run_with(db, src, FakeFetcher(r))
     assert out.status == RunStatus.FAILED and "CAPTCHA" in run.error_message
 
 
-def test_changed_page_creates_new_version(db, src, clean_db):
+def test_changed_page_creates_new_version(db, src):
     run_with(db, src, FakeFetcher(routes()))
     run2, out2 = run_with(db, src, FakeFetcher(routes(job2=JOB2.replace("PostgreSQL", "PostgreSQL, Redis"))))
     assert run2.changed == 1 and run2.unchanged == 1
