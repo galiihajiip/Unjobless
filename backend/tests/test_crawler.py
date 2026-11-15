@@ -35,7 +35,11 @@ def routes(robots=ROBOTS_OK, job2=JOB2):
     }
 
 
-CFG = {"start_urls": ["https://www.acme.example/careers"], "allowed_path_prefixes": ["/careers"], "job_url_pattern": r"/careers/[a-z-]+$"}
+CFG = {
+    "start_urls": ["https://www.acme.example/careers"],
+    "allowed_path_prefixes": ["/careers"],
+    "job_url_pattern": r"/careers/[a-z-]+$",
+}
 
 
 @pytest.fixture(autouse=True)
@@ -52,7 +56,9 @@ def _reset_host_state(engine):
 
 @pytest.fixture
 def src(db):
-    s = approved_source(db, key="acme-careers", connector_type="career_page", config=CFG, domain="acme.example")
+    s = approved_source(
+        db, key="acme-careers", connector_type="career_page", config=CFG, domain="acme.example"
+    )
     s.rate_limit_per_minute = 600  # 0.1s between requests in tests
     db.flush()
     return s
@@ -107,4 +113,11 @@ def test_robots_cannot_be_disabled(db):
     from unjobless.sources import service
 
     with pytest.raises(ValidationFailed):
-        service.create_source(db, key="x", name="x", connector_type="career_page", config={**CFG, "respect_robots": False}, domain="acme.example")
+        service.create_source(
+            db,
+            key="x",
+            name="x",
+            connector_type="career_page",
+            config={**CFG, "respect_robots": False},
+            domain="acme.example",
+        )
