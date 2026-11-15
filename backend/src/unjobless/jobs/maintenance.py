@@ -121,6 +121,9 @@ def raw_retention() -> None:
         if days:
             db.execute(
                 update(RawSourceDocument)
-                .where(RawSourceDocument.retention_until.is_(None), RawSourceDocument.last_collected_at < utcnow() - timedelta(days=int(days)))
+                .where(
+                    RawSourceDocument.retention_until.is_(None),
+                    RawSourceDocument.last_collected_at < utcnow() - timedelta(days=int(days)),
+                )
                 .values(retention_until=utcnow())
             )
