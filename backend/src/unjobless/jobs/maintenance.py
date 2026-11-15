@@ -24,16 +24,30 @@ def redeliver_pending() -> None:
     """Re-defer work that is QUEUED in domain tables but may have lost its queue message."""
     cutoff = utcnow() - timedelta(minutes=2)
     with session_scope() as db:
-        version_ids = db.execute(
-            select(RawSourceVersion.id)
-            .where(RawSourceVersion.processing_status == ProcessingStatus.QUEUED, RawSourceVersion.collected_at < cutoff)
-            .limit(200)
-        ).scalars().all()
-        item_ids = db.execute(
-            select(ImportItem.id)
-            .where(ImportItem.status.in_([ImportItemStatus.QUEUED, ImportItemStatus.FETCHING]), ImportItem.updated_at < cutoff)
-            .limit(200)
-        ).scalars().all()
+        version_ids = (
+            db.execute(
+                select(RawSourceVersion.id)
+                .where(
+                    RawSourceVersion.processing_status == ProcessingStatus.QUEUED,
+                    RawSourceVersion.collected_at < cutoff,
+                )
+                .limit(200)
+            )
+            .scalars()
+            .all()
+        )
+        item_ids = (
+            db.execute(
+                select(ImportItem.id)
+                .where(
+                    ImportItem.status.in_([ImportItemStatus.QUEUED, ImportItemStatus.FETCHING]),
+                    ImportItem.updated_at < cutoff,
+                )
+                .limit(200)
+            )
+            .scalars()
+            .all()
+        )
     for vid in version_ids:
         defer("process_version", queueing_lock=f"version-{vid}", version_id=vid)
     for iid in item_ids:
@@ -59,4 +73,6 @@ def daily() -> None:
         try:
             step()
         except Exception as exc:  # one failing step must not block the others
-            log.warning("daily_step_failed", step=getattr(step, "__name__", "?"), error_type=type(exc).__name__)
+            log.warning(
+                "daily_step_failed", step=getattr(step, "__name__", "?"), error_type=type(exc).__name__
+            )
