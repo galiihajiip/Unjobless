@@ -1,5 +1,6 @@
 import { Columns2, Sparkles } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Alert, Badge, Button, Card, EmptyState, ErrorState, LoadingCards, Meter, PageHeader } from '@/components/ui'
 import { post, put } from '@/lib/api'
@@ -13,29 +14,21 @@ export default function ComparePage() {
   const [sp, setSp] = useSearchParams()
   const ids = (sp.get('ids') ?? '').split(',').map(Number).filter(Boolean)
   const [weights, setWeights] = useState<Record<string, number> | null>(null)
-  const [result, setResult] = useState<Comparison | null>(null)
-  const [err, setErr] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [applied, setApplied] = useState<Record<string, number> | null>(null)
   const defaults = useGet<{ weights: Record<string, number> }>(['compare-defaults'], '/compare/defaults')
   const history = useGet<{ id: number; created_at: string; lean: string; vacancies: { id: number; title: string; company: string | null }[] }[]>(['compare-history'], '/compare/history')
   const w = weights ?? defaults.data?.weights ?? null
-
-  const run = async (save: boolean, wts = w) => {
-    if (ids.length !== 2) return
-    setBusy(true)
-    setErr(null)
-    try {
-      setResult(await post<Comparison>('/compare', { vacancy_ids: ids, weights: wts, save }))
-    } catch (e) {
-      setErr(errorMessage(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-  useEffect(() => {
-    if (ids.length === 2 && w) void run(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sp.get('ids'), defaults.data])
+  const usedWeights = applied ?? defaults.data?.weights ?? null
+  const cmp = useQuery({
+    queryKey: ['compare', ids.join(','), usedWeights],
+    queryFn: () => post<Comparison>('/compare', { vacancy_ids: ids, weights: usedWeights, save: true }),
+    enabled: ids.length === 2 && usedWeights !== null,
+    retry: false,
+  })
+  const result = cmp.data ?? null
+  const busy = cmp.isFetching
+  const err = errorMessage(cmp.error)
+  const run = () => setApplied(w)
   const saveDefaults = useAction(() => put('/compare/defaults', { weights: w }), { success: 'Saved as default weights' })
   const explain = useAction(() => post<{ summary: string; tradeoffs: string[]; recommendation: string; uncertainty: string }>('/compare/explain', { vacancy_ids: ids, weights: w, save: false }))
 
@@ -97,7 +90,7 @@ export default function ComparePage() {
             ))}
           </div>
           <div className="row">
-            <Button variant="primary" loading={busy} onClick={() => void run(true)}>Recalculate with these weights</Button>
+            <Button variant="primary" loading={busy} onClick={run}>Recalculate with these weights</Button>
             <Button onClick={() => saveDefaults.mutate(undefined)}>Save weights as default</Button>
             <Button variant="ai" icon={<Sparkles size={16} />} loading={explain.isPending} onClick={() => explain.mutate(undefined)}>Explain with AI</Button>
           </div>
