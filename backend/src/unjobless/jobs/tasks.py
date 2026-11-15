@@ -10,6 +10,19 @@ log = get_logger(__name__)
 app = get_app()
 
 
+def _register_hooks() -> None:
+    from unjobless.intelligence.pipeline import enqueue_versions
+    from unjobless.jobs import maintenance, runner
+
+    if enqueue_versions not in runner.NEW_VERSION_HOOKS:
+        runner.NEW_VERSION_HOOKS.append(enqueue_versions)
+    if not maintenance.DAILY_STEPS:
+        maintenance.DAILY_STEPS.extend([maintenance.lifecycle_recheck, maintenance.trends_refresh])
+
+
+_register_hooks()
+
+
 @app.task(name="run_source", queue="collection", pass_context=False)
 def run_source(run_id: int) -> None:
     from unjobless.jobs.runner import execute_run
