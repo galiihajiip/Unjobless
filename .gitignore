@@ -1,0 +1,24 @@
+# --- Private personal data: NEVER commit ---
+# The owner's CV and any other personal documents.
+*.docx
+*.doc
+*.pdf
+!docs/**/*.pdf
+cv.*
+/private/
+/data/
+/uploads/
+
+# Root-level originals (canonical copies live under docs/)
+/993dfc53aa108022b43fe6b2d53f4c9f.webp
+/UNJOBLESS_CLAUDE_CODE_BUILD_PLAYBOOK.md
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
