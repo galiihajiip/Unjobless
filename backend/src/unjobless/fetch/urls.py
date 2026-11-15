@@ -5,8 +5,24 @@ from __future__ import annotations
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 TRACKING_PARAMS = {
-    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "gclid", "fbclid",
-    "mc_cid", "mc_eid", "igshid", "ref", "ref_src", "_hsenc", "_hsmi", "si", "trk", "trackingId",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "utm_id",
+    "gclid",
+    "fbclid",
+    "mc_cid",
+    "mc_eid",
+    "igshid",
+    "ref",
+    "ref_src",
+    "_hsenc",
+    "_hsmi",
+    "si",
+    "trk",
+    "trackingId",
 }
 
 
@@ -32,7 +48,9 @@ def canonicalize_url(url: str) -> str:
     netloc = host
     if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
         netloc = f"{host}:{port}"
-    query = urlencode(sorted((k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k not in TRACKING_PARAMS))
+    query = urlencode(
+        sorted((k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k not in TRACKING_PARAMS)
+    )
     path = parts.path or "/"
     if len(path) > 1 and path.endswith("/"):
         path = path[:-1]
