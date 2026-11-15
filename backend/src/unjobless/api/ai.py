@@ -98,7 +98,10 @@ def _make_default(db: DB, p: AIProviderConfig) -> None:
 
 @router.get("/providers")
 def providers(db: DB) -> list[dict[str, Any]]:
-    return [provider_out(p) for p in db.execute(select(AIProviderConfig).order_by(AIProviderConfig.name)).scalars()]
+    return [
+        provider_out(p)
+        for p in db.execute(select(AIProviderConfig).order_by(AIProviderConfig.name)).scalars()
+    ]
 
 
 @router.post("/providers", status_code=201)
@@ -109,7 +112,13 @@ def create_provider(body: ProviderIn, db: DB) -> dict[str, Any]:
         raise ValidationFailed("Provider base URL must use https.")
     if db.execute(select(AIProviderConfig).where(AIProviderConfig.name == body.name)).scalar_one_or_none():
         raise Conflict("A provider with that name exists.")
-    p = AIProviderConfig(name=body.name, kind=body.kind, base_url=body.base_url, default_model=body.default_model, allow_as_fallback=body.allow_as_fallback)
+    p = AIProviderConfig(
+        name=body.name,
+        kind=body.kind,
+        base_url=body.base_url,
+        default_model=body.default_model,
+        allow_as_fallback=body.allow_as_fallback,
+    )
     if body.api_key:
         _set_key(p, body.api_key)
     db.add(p)
@@ -117,7 +126,13 @@ def create_provider(body: ProviderIn, db: DB) -> dict[str, Any]:
     is_first = db.execute(select(func.count()).select_from(AIProviderConfig)).scalar_one() == 1
     if body.is_default or is_first:
         _make_default(db, p)
-    audit(db, "ai.provider_created", target_type="ai_provider", target_id=p.id, details={"kind": body.kind, "key_set": bool(body.api_key)})
+    audit(
+        db,
+        "ai.provider_created",
+        target_type="ai_provider",
+        target_id=p.id,
+        details={"kind": body.kind, "key_set": bool(body.api_key)},
+    )
     return provider_out(p)
 
 
@@ -125,7 +140,7 @@ def create_provider(body: ProviderIn, db: DB) -> dict[str, Any]:
 def patch_provider(pid: int, body: ProviderPatch, db: DB) -> dict[str, Any]:
     p = _get(db, pid)
     changes = body.model_dump(exclude_unset=True)
-    if "api_key" in changes and changes["api_key"]:
+    if changes.get("api_key"):
         _set_key(p, changes.pop("api_key"))
         p.cooldown_until = None
         audit(db, "ai.key_rotated", target_type="ai_provider", target_id=p.id)
@@ -136,7 +151,13 @@ def patch_provider(pid: int, body: ProviderPatch, db: DB) -> dict[str, Any]:
         _make_default(db, p)
     for k, v in changes.items():
         setattr(p, k, v)
-    audit(db, "ai.provider_updated", target_type="ai_provider", target_id=p.id, details={"fields": sorted(changes)})
+    audit(
+        db,
+        "ai.provider_updated",
+        target_type="ai_provider",
+        target_id=p.id,
+        details={"fields": sorted(changes)},
+    )
     return provider_out(p)
 
 
@@ -165,17 +186,31 @@ def test(pid: int, db: DB) -> dict[str, Any]:
 def models(pid: int, db: DB) -> list[dict[str, Any]]:
     p = _get(db, pid)
     rows = db.execute(select(AIModelConfig).where(AIModelConfig.provider_id == p.id)).scalars()
-    out = [{"model": m.model, "input_price_per_mtok": m.input_price_per_mtok, "output_price_per_mtok": m.output_price_per_mtok, "source": "configured"} for m in rows]
+    out = [
+        {
+            "model": m.model,
+            "input_price_per_mtok": m.input_price_per_mtok,
+            "output_price_per_mtok": m.output_price_per_mtok,
+            "source": "configured",
+        }
+        for m in rows
+    ]
     if p.kind == "anthropic":
         have = {m["model"] for m in out}
-        out += [{"model": k, "input_price_per_mtok": v[0], "output_price_per_mtok": v[1], "source": "list_price"} for k, v in KNOWN_PRICES.items() if k not in have]
+        out += [
+            {"model": k, "input_price_per_mtok": v[0], "output_price_per_mtok": v[1], "source": "list_price"}
+            for k, v in KNOWN_PRICES.items()
+            if k not in have
+        ]
     return out
 
 
 @router.put("/providers/{pid}/models")
 def set_model_price(pid: int, body: ModelPriceIn, db: DB) -> dict[str, Any]:
     p = _get(db, pid)
-    m = db.execute(select(AIModelConfig).where(AIModelConfig.provider_id == p.id, AIModelConfig.model == body.model)).scalar_one_or_none()
+    m = db.execute(
+        select(AIModelConfig).where(AIModelConfig.provider_id == p.id, AIModelConfig.model == body.model)
+    ).scalar_one_or_none()
     if m is None:
         m = AIModelConfig(provider_id=p.id, model=body.model)
         db.add(m)
@@ -188,7 +223,14 @@ def tasks(db: DB) -> dict[str, Any]:
     routes = (db.get(AppSettings, "ai_task_routes") or AppSettings(key="", value={})).value
     return {
         "tasks": [
-            {"name": t.name, "version": t.version, "schema_version": t.schema_version, "effort": t.effort, "max_tokens": t.max_tokens, "route": routes.get(t.name)}
+            {
+                "name": t.name,
+                "version": t.version,
+                "schema_version": t.schema_version,
+                "effort": t.effort,
+                "max_tokens": t.max_tokens,
+                "route": routes.get(t.name),
+            }
             for t in TASKS.values()
         ]
     }
@@ -238,17 +280,35 @@ def usage(db: DB, days: int = Query(30, ge=1, le=365)) -> dict[str, Any]:
             func.coalesce(func.sum(AIUsageEvent.input_tokens), 0),
             func.coalesce(func.sum(AIUsageEvent.output_tokens), 0),
             func.sum(AIUsageEvent.cost_estimate),
-        ).where(AIUsageEvent.at > since).group_by(AIUsageEvent.task)
+        )
+        .where(AIUsageEvent.at > since)
+        .group_by(AIUsageEvent.task)
     ).all()
     runs = db.execute(select(AITaskRun).order_by(AITaskRun.created_at.desc()).limit(50)).scalars()
     return {
         "days": days,
         "by_task": [
-            {"task": t, "calls": c, "input_tokens": int(i), "output_tokens": int(o), "cost_estimate_usd": float(cost) if cost is not None else None}
+            {
+                "task": t,
+                "calls": c,
+                "input_tokens": int(i),
+                "output_tokens": int(o),
+                "cost_estimate_usd": float(cost) if cost is not None else None,
+            }
             for t, c, i, o, cost in by_task
         ],
         "recent_runs": [
-            {"id": r.id, "task": r.task, "status": r.status.value, "model": r.model, "provider_kind": r.provider_kind, "prompt_version": r.prompt_version, "attempts": r.attempts, "error": r.error, "created_at": r.created_at.isoformat()}
+            {
+                "id": r.id,
+                "task": r.task,
+                "status": r.status.value,
+                "model": r.model,
+                "provider_kind": r.provider_kind,
+                "prompt_version": r.prompt_version,
+                "attempts": r.attempts,
+                "error": r.error,
+                "created_at": r.created_at.isoformat(),
+            }
             for r in runs
         ],
     }
