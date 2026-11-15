@@ -9,7 +9,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from unjobless.api import health
+from unjobless.api import auth, health
+from unjobless.api.router import build_private_router
 from unjobless.core.config import get_settings
 from unjobless.core.errors import AppError
 from unjobless.core.logging import configure_logging, get_logger
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
         finally:
             structlog.contextvars.clear_contextvars()
         response.headers["x-request-id"] = request_id
+        _security_headers(response.headers, settings.is_production)
         return response
 
     @app.exception_handler(AppError)
@@ -67,4 +69,21 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(health.router, prefix="/api")
+    app.include_router(auth.router, prefix="/api")
+    app.include_router(build_private_router(), prefix="/api")
     return app
+
+
+def _security_headers(headers, production: bool) -> None:  # type: ignore[no-untyped-def]
+    """Conservative headers for JSON API responses (Caddy adds page-level CSP for the SPA)."""
+    headers.setdefault("X-Content-Type-Options", "nosniff")
+    headers.setdefault("X-Frame-Options", "DENY")
+    headers.setdefault("Referrer-Policy", "no-referrer")
+    headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+    headers.setdefault("Cache-Control", "no-store")
+    if "content-security-policy" not in headers:
+        headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    if production:
+        headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
