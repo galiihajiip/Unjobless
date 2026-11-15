@@ -79,7 +79,7 @@ def create_backup(*, keep: int = 7) -> dict[str, Any]:
         check=True,
         capture_output=True,
         timeout=3600,
-    )  # noqa: S603, S607
+    )
     files_root = Path(get_settings().files_dir).resolve()
     tar_path = out / "files.tar.gz"
     with tarfile.open(tar_path, "w:gz") as tar:
@@ -98,7 +98,7 @@ def create_backup(*, keep: int = 7) -> dict[str, Any]:
                 "application_records",
                 "resume_documents",
             )
-        }  # noqa: S608
+        }
     manifest = {
         "format_version": FORMAT_VERSION,
         "app": "unjobless",
@@ -175,7 +175,7 @@ def restore(path: Path, *, confirm: bool = False) -> dict[str, Any]:
             "--single-transaction",
             *args,
             str(path / "database.dump"),
-        ],  # noqa: S603, S607
+        ],
         env=env,
         check=True,
         capture_output=True,
@@ -211,7 +211,7 @@ def integrity_check() -> dict[str, Any]:
         counts = {
             t: c.execute(text(f"select count(*) from {t}")).scalar()
             for t in ("job_vacancies", "raw_source_documents", "candidate_profile_versions")
-        }  # noqa: S608
+        }
         enc = c.execute(
             text("select count(*) from ai_provider_configs where encrypted_api_key is not null")
         ).scalar()
