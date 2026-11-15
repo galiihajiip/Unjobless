@@ -143,7 +143,7 @@ AI_TASK = Machine(
     "ai_task",
     _t(
         [
-            (T.PENDING, [T.RUNNING, T.CANCELLED]),
+            (T.PENDING, [T.RUNNING, T.CANCELLED, T.FAILED_PROVIDER, T.RATE_LIMITED]),
             (T.RUNNING, [T.SUCCEEDED, T.RUNNING, T.FAILED_VALIDATION, T.RATE_LIMITED, T.FAILED_PROVIDER]),
             (T.RATE_LIMITED, [T.PENDING]),
         ]
