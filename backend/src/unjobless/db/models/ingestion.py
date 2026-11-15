@@ -56,7 +56,9 @@ class RawSourceDocument(Base):
         ),
     )
     id: Mapped[int] = pk()
-    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id", ondelete="RESTRICT"), nullable=False, index=True)
+    source_id: Mapped[int] = mapped_column(
+        ForeignKey("sources.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
     source_native_id: Mapped[str | None] = mapped_column(String(300))
     canonical_url: Mapped[str | None] = mapped_column(Text, index=True)
     original_url: Mapped[str | None] = mapped_column(Text)
@@ -65,7 +67,9 @@ class RawSourceDocument(Base):
     last_collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_seen_in_listing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     latest_version_id: Mapped[int | None] = mapped_column(
-        ForeignKey("raw_source_versions.id", ondelete="SET NULL", use_alter=True, name="fk_raw_doc_latest_version")
+        ForeignKey(
+            "raw_source_versions.id", ondelete="SET NULL", use_alter=True, name="fk_raw_doc_latest_version"
+        )
     )
     gone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retention_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -100,7 +104,9 @@ class RawSourceVersion(Base):
         enum_col(ProcessingStatus), nullable=False, default=ProcessingStatus.QUEUED
     )
     processing_error: Mapped[str | None] = mapped_column(Text)
-    classification: Mapped[OpportunityClassification | None] = mapped_column(enum_col(OpportunityClassification))
+    classification: Mapped[OpportunityClassification | None] = mapped_column(
+        enum_col(OpportunityClassification)
+    )
     classification_detail: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
 
@@ -160,7 +166,9 @@ class ImportItem(Base, Timestamps):
         CheckConstraint("retry_count >= 0", name="retry_nonneg"),
     )
     id: Mapped[int] = pk()
-    batch_id: Mapped[int] = mapped_column(ForeignKey("import_batches.id", ondelete="CASCADE"), nullable=False, index=True)
+    batch_id: Mapped[int] = mapped_column(
+        ForeignKey("import_batches.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     input_url: Mapped[str | None] = mapped_column(Text)
     detected_domain: Mapped[str | None] = mapped_column(String(253))
@@ -169,10 +177,14 @@ class ImportItem(Base, Timestamps):
     status: Mapped[ImportItemStatus] = mapped_column(
         enum_col(ImportItemStatus), nullable=False, default=ImportItemStatus.QUEUED, index=True
     )
-    raw_version_id: Mapped[int | None] = mapped_column(ForeignKey("raw_source_versions.id", ondelete="SET NULL"))
+    raw_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("raw_source_versions.id", ondelete="SET NULL")
+    )
     extraction: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     result_vacancy_id: Mapped[int | None] = mapped_column(ForeignKey("job_vacancies.id", ondelete="SET NULL"))
-    result_signal_id: Mapped[int | None] = mapped_column(ForeignKey("opportunity_signals.id", ondelete="SET NULL"))
+    result_signal_id: Mapped[int | None] = mapped_column(
+        ForeignKey("opportunity_signals.id", ondelete="SET NULL")
+    )
     failure_reason: Mapped[str | None] = mapped_column(Text)
     failure_code: Mapped[str | None] = mapped_column(String(60))
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
