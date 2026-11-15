@@ -127,3 +127,20 @@ def test_paste_rejects_unsafe_source_url(db):
 
     with pytest.raises(ValidationFailed):
         imports.create_paste_batch(db, [imports.PasteInput(text="x", source_url="javascript:alert(1)")])
+
+
+def test_identical_paste_twice_gets_review_each_time(engine, clean_db):
+    from unjobless.intelligence.pipeline import process_version
+
+    text = "We're hiring a Junior Data Analyst at Example Analytics (remote). Requirements: SQL. Apply at https://x.invalid/a"
+    ids = []
+    for _ in range(2):
+        with session_scope() as db:
+            b = imports.create_paste_batch(db, [imports.PasteInput(text=text)])
+            it = db.execute(select(ImportItem).where(ImportItem.batch_id == b.id)).scalar_one()
+            ids.append((it.id, it.raw_version_id))
+        with session_scope() as db:
+            process_version(db, ids[-1][1], use_ai=False)
+    assert ids[0][1] == ids[1][1]  # same immutable raw version
+    with session_scope() as db:
+        assert all(db.get(ImportItem, i).status == ImportItemStatus.NEEDS_REVIEW for i, _ in ids)
