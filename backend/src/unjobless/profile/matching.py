@@ -39,7 +39,14 @@ from unjobless.profile.schemas import CareerPreferencesData, ProfileData
 ALGORITHM_VERSION = "1.0"
 DEFAULT_WEIGHTS = {"candidate_fit": 0.6, "preference_fit": 0.4}
 CFIT_WEIGHTS = {"required_skills": 0.5, "preferred_skills": 0.15, "role_relevance": 0.2, "education": 0.15}
-PFIT_WEIGHTS = {"role_target": 0.25, "work_arrangement": 0.2, "location": 0.2, "employment_type": 0.15, "compensation": 0.15, "industry": 0.05}
+PFIT_WEIGHTS = {
+    "role_target": 0.25,
+    "work_arrangement": 0.2,
+    "location": 0.2,
+    "employment_type": 0.15,
+    "compensation": 0.15,
+    "industry": 0.05,
+}
 EDU_RANK = {"HIGH_SCHOOL": 1, "DIPLOMA": 2, "STUDENT": 2, "BACHELOR": 3, "MASTER": 4, "DOCTORATE": 5}
 
 
@@ -100,13 +107,26 @@ def _edu_level(profile: ProfileData, prefs: CareerPreferencesData) -> str | None
         return prefs.education_level
     for e in profile.educations:
         d = (e.degree or "").lower()
-        for k, v in (("s3", "DOCTORATE"), ("phd", "DOCTORATE"), ("s2", "MASTER"), ("master", "MASTER"), ("s1", "BACHELOR"), ("bachelor", "BACHELOR"), ("sarjana", "BACHELOR"), ("d3", "DIPLOMA"), ("sma", "HIGH_SCHOOL"), ("smk", "HIGH_SCHOOL")):
+        for k, v in (
+            ("s3", "DOCTORATE"),
+            ("phd", "DOCTORATE"),
+            ("s2", "MASTER"),
+            ("master", "MASTER"),
+            ("s1", "BACHELOR"),
+            ("bachelor", "BACHELOR"),
+            ("sarjana", "BACHELOR"),
+            ("d3", "DIPLOMA"),
+            ("sma", "HIGH_SCHOOL"),
+            ("smk", "HIGH_SCHOOL"),
+        ):
             if re.search(rf"\b{k}\b", d):
                 return v
     return None
 
 
-def eligibility(v: JobVacancy, profile: ProfileData | None, prefs: CareerPreferencesData) -> tuple[bool | None, list[str], list[str]]:
+def eligibility(
+    v: JobVacancy, profile: ProfileData | None, prefs: CareerPreferencesData
+) -> tuple[bool | None, list[str], list[str]]:
     """(eligible, blocking reasons, unknowns). None = cannot tell."""
     reasons, unknowns = [], []
     excluded_co = {normalize_company(c) for c in prefs.excluded_companies}
@@ -128,13 +148,17 @@ def eligibility(v: JobVacancy, profile: ProfileData | None, prefs: CareerPrefere
         if prefs.current_semester is None:
             unknowns.append("Your current semester is not set in preferences.")
         elif prefs.current_semester < v.min_semester:
-            reasons.append(f"Requires semester ≥ {v.min_semester}; you are in semester {prefs.current_semester}.")
+            reasons.append(
+                f"Requires semester ≥ {v.min_semester}; you are in semester {prefs.current_semester}."
+            )
     if reasons:
         return False, reasons, unknowns
     return (None if unknowns else True), reasons, unknowns
 
 
-def compute(db: Session, v: JobVacancy, profile: ProfileData | None, prefs: CareerPreferencesData) -> dict[str, Any]:
+def compute(
+    db: Session, v: JobVacancy, profile: ProfileData | None, prefs: CareerPreferencesData
+) -> dict[str, Any]:
     skills = db.execute(select(JobSkill).where(JobSkill.vacancy_id == v.id)).scalars().all()
     reqs = db.execute(select(JobRequirement).where(JobRequirement.vacancy_id == v.id)).scalars().all()
     locs = db.execute(select(JobLocation).where(JobLocation.vacancy_id == v.id)).scalars().all()
@@ -147,36 +171,114 @@ def compute(db: Session, v: JobVacancy, profile: ProfileData | None, prefs: Care
     else:
         idx = _candidate_skill_index(profile)
         if required:
-            matched = [{"skill": s.skill, "evidence": idx[s.normalized_skill]} for s in required if s.normalized_skill in idx]
+            matched = [
+                {"skill": s.skill, "evidence": idx[s.normalized_skill]}
+                for s in required
+                if s.normalized_skill in idx
+            ]
             missing = [s.skill for s in required if s.normalized_skill not in idx]
-            cfit.append(Component("required_skills", len(matched) / len(required), CFIT_WEIGHTS["required_skills"], f"{len(matched)} of {len(required)} required skills evidenced in your profile.", matched, missing))
+            cfit.append(
+                Component(
+                    "required_skills",
+                    len(matched) / len(required),
+                    CFIT_WEIGHTS["required_skills"],
+                    f"{len(matched)} of {len(required)} required skills evidenced in your profile.",
+                    matched,
+                    missing,
+                )
+            )
         else:
-            cfit.append(Component("required_skills", None, CFIT_WEIGHTS["required_skills"], "The vacancy lists no required skills."))
+            cfit.append(
+                Component(
+                    "required_skills",
+                    None,
+                    CFIT_WEIGHTS["required_skills"],
+                    "The vacancy lists no required skills.",
+                )
+            )
         if preferred:
-            matched = [{"skill": s.skill, "evidence": idx[s.normalized_skill]} for s in preferred if s.normalized_skill in idx]
-            cfit.append(Component("preferred_skills", len(matched) / len(preferred), CFIT_WEIGHTS["preferred_skills"], f"{len(matched)} of {len(preferred)} preferred skills.", matched, [s.skill for s in preferred if s.normalized_skill not in idx]))
+            matched = [
+                {"skill": s.skill, "evidence": idx[s.normalized_skill]}
+                for s in preferred
+                if s.normalized_skill in idx
+            ]
+            cfit.append(
+                Component(
+                    "preferred_skills",
+                    len(matched) / len(preferred),
+                    CFIT_WEIGHTS["preferred_skills"],
+                    f"{len(matched)} of {len(preferred)} preferred skills.",
+                    matched,
+                    [s.skill for s in preferred if s.normalized_skill not in idx],
+                )
+            )
         else:
-            cfit.append(Component("preferred_skills", None, CFIT_WEIGHTS["preferred_skills"], "No preferred skills listed."))
-        title_tokens = set(normalize_key(v.title).split()) - {"intern", "internship", "magang", "staff", "junior", "senior", "the", "and", "di", "untuk"}
+            cfit.append(
+                Component(
+                    "preferred_skills", None, CFIT_WEIGHTS["preferred_skills"], "No preferred skills listed."
+                )
+            )
+        title_tokens = set(normalize_key(v.title).split()) - {
+            "intern",
+            "internship",
+            "magang",
+            "staff",
+            "junior",
+            "senior",
+            "the",
+            "and",
+            "di",
+            "untuk",
+        }
         role_hits = []
         for x in profile.experiences:
             overlap = title_tokens & set(normalize_key(x.title).split())
             if overlap:
-                role_hits.append({"fact": x.id, "text": f"{x.title} at {x.organization}", "overlap": sorted(overlap)})
+                role_hits.append(
+                    {"fact": x.id, "text": f"{x.title} at {x.organization}", "overlap": sorted(overlap)}
+                )
         for pr in profile.projects:
-            overlap = title_tokens & set(normalize_key(f"{pr.name} {pr.role or ''} {pr.description or ''}").split())
+            overlap = title_tokens & set(
+                normalize_key(f"{pr.name} {pr.role or ''} {pr.description or ''}").split()
+            )
             if len(overlap) >= 1:
                 role_hits.append({"fact": pr.id, "text": pr.name, "overlap": sorted(overlap)})
         if title_tokens:
-            score = min(1.0, len({t for h in role_hits for t in h["overlap"]}) / max(1, min(3, len(title_tokens))))
-            cfit.append(Component("role_relevance", score, CFIT_WEIGHTS["role_relevance"], f"{len(role_hits)} related experiences/projects.", role_hits[:5]))
+            score = min(
+                1.0, len({t for h in role_hits for t in h["overlap"]}) / max(1, min(3, len(title_tokens)))
+            )
+            cfit.append(
+                Component(
+                    "role_relevance",
+                    score,
+                    CFIT_WEIGHTS["role_relevance"],
+                    f"{len(role_hits)} related experiences/projects.",
+                    role_hits[:5],
+                )
+            )
         edu_req = next((r.value for r in reqs if r.kind == "education"), None) or v.education_level
         mine = _edu_level(profile, prefs)
         if edu_req and mine and edu_req in EDU_RANK and mine in EDU_RANK:
-            ok = EDU_RANK[mine] >= EDU_RANK[edu_req] or (edu_req == "BACHELOR" and mine == "STUDENT" and v.employment_type.value == "INTERNSHIP")
-            cfit.append(Component("education", 1.0 if ok else 0.0, CFIT_WEIGHTS["education"], f"Requires {edu_req}; you: {mine}."))
+            ok = EDU_RANK[mine] >= EDU_RANK[edu_req] or (
+                edu_req == "BACHELOR" and mine == "STUDENT" and v.employment_type.value == "INTERNSHIP"
+            )
+            cfit.append(
+                Component(
+                    "education",
+                    1.0 if ok else 0.0,
+                    CFIT_WEIGHTS["education"],
+                    f"Requires {edu_req}; you: {mine}.",
+                )
+            )
         else:
-            cfit.append(Component("education", None, CFIT_WEIGHTS["education"], "Education requirement or your level is unknown."))
+            cfit.append(
+                Component(
+                    "education",
+                    None,
+                    CFIT_WEIGHTS["education"],
+                    "Education requirement or your level is unknown.",
+                )
+            )
         cfit_score = _weighted(cfit)
 
     pfit: list[Component] = []
@@ -185,44 +287,122 @@ def compute(db: Session, v: JobVacancy, profile: ProfileData | None, prefs: Care
         vt = normalize_key(f"{v.title} {v.job_family or ''}")
         hit = [t for t in targets if t and (t in vt or set(t.split()) <= set(vt.split()))]
         partial = [t for t in targets if t not in hit and set(t.split()) & set(vt.split())]
-        pfit.append(Component("role_target", 1.0 if hit else 0.5 if partial else 0.0, PFIT_WEIGHTS["role_target"], "Matches a target role." if hit else "Partly related to a target role." if partial else "Not one of your target roles."))
+        pfit.append(
+            Component(
+                "role_target",
+                1.0 if hit else 0.5 if partial else 0.0,
+                PFIT_WEIGHTS["role_target"],
+                "Matches a target role."
+                if hit
+                else "Partly related to a target role."
+                if partial
+                else "Not one of your target roles.",
+            )
+        )
     wa = v.work_arrangement.value
     if prefs.work_arrangements:
         if wa == "UNKNOWN":
-            pfit.append(Component("work_arrangement", None, PFIT_WEIGHTS["work_arrangement"], "Work arrangement not stated."))
+            pfit.append(
+                Component(
+                    "work_arrangement", None, PFIT_WEIGHTS["work_arrangement"], "Work arrangement not stated."
+                )
+            )
         else:
-            pfit.append(Component("work_arrangement", 1.0 if wa in prefs.work_arrangements or wa == "FLEXIBLE" else 0.0, PFIT_WEIGHTS["work_arrangement"], f"{wa.title()} vs your preference."))
+            pfit.append(
+                Component(
+                    "work_arrangement",
+                    1.0 if wa in prefs.work_arrangements or wa == "FLEXIBLE" else 0.0,
+                    PFIT_WEIGHTS["work_arrangement"],
+                    f"{wa.title()} vs your preference.",
+                )
+            )
     cities = {normalize_key(c) for c in prefs.preferred_cities}
     if cities or not prefs.remote_ok:
         remote = wa == "REMOTE" or any(loc.is_remote for loc in locs)
         vac_cities = {normalize_key(loc.city) for loc in locs if loc.city}
         if remote and prefs.remote_ok:
-            pfit.append(Component("location", 1.0, PFIT_WEIGHTS["location"], "Remote, and you accept remote work."))
+            pfit.append(
+                Component("location", 1.0, PFIT_WEIGHTS["location"], "Remote, and you accept remote work.")
+            )
         elif vac_cities:
-            pfit.append(Component("location", 1.0 if vac_cities & cities else 0.0, PFIT_WEIGHTS["location"], f"Location: {', '.join(sorted(vac_cities))}."))
+            pfit.append(
+                Component(
+                    "location",
+                    1.0 if vac_cities & cities else 0.0,
+                    PFIT_WEIGHTS["location"],
+                    f"Location: {', '.join(sorted(vac_cities))}.",
+                )
+            )
         else:
-            pfit.append(Component("location", None, PFIT_WEIGHTS["location"], "Location not stated or not recognised."))
+            pfit.append(
+                Component(
+                    "location", None, PFIT_WEIGHTS["location"], "Location not stated or not recognised."
+                )
+            )
     if prefs.employment_types:
         et = v.employment_type.value
-        pfit.append(Component("employment_type", None if et == "UNKNOWN" else (1.0 if et in prefs.employment_types else 0.0), PFIT_WEIGHTS["employment_type"], "Employment type not stated." if et == "UNKNOWN" else f"{et.replace('_', ' ').title()}."))
+        pfit.append(
+            Component(
+                "employment_type",
+                None if et == "UNKNOWN" else (1.0 if et in prefs.employment_types else 0.0),
+                PFIT_WEIGHTS["employment_type"],
+                "Employment type not stated." if et == "UNKNOWN" else f"{et.replace('_', ' ').title()}.",
+            )
+        )
     if prefs.min_compensation:
         if v.salary_max is None and v.salary_min is None:
-            pfit.append(Component("compensation", None, PFIT_WEIGHTS["compensation"], "Compensation not stated (treated as unknown, not zero)."))
-        elif (v.salary_currency or "IDR") != prefs.compensation_currency or (v.pay_period and v.pay_period.value != prefs.compensation_period):
-            pfit.append(Component("compensation", None, PFIT_WEIGHTS["compensation"], "Compensation is in a different currency/period; not compared automatically."))
+            pfit.append(
+                Component(
+                    "compensation",
+                    None,
+                    PFIT_WEIGHTS["compensation"],
+                    "Compensation not stated (treated as unknown, not zero).",
+                )
+            )
+        elif (v.salary_currency or "IDR") != prefs.compensation_currency or (
+            v.pay_period and v.pay_period.value != prefs.compensation_period
+        ):
+            pfit.append(
+                Component(
+                    "compensation",
+                    None,
+                    PFIT_WEIGHTS["compensation"],
+                    "Compensation is in a different currency/period; not compared automatically.",
+                )
+            )
         else:
             top = float(v.salary_max or v.salary_min or 0)
-            pfit.append(Component("compensation", 1.0 if top >= prefs.min_compensation else round(top / prefs.min_compensation, 2), PFIT_WEIGHTS["compensation"], f"Up to {top:,.0f} vs your minimum {prefs.min_compensation:,.0f}."))
+            pfit.append(
+                Component(
+                    "compensation",
+                    1.0 if top >= prefs.min_compensation else round(top / prefs.min_compensation, 2),
+                    PFIT_WEIGHTS["compensation"],
+                    f"Up to {top:,.0f} vs your minimum {prefs.min_compensation:,.0f}.",
+                )
+            )
     if prefs.industries:
-        pfit.append(Component("industry", None if not v.industry else (1.0 if normalize_key(v.industry) in {normalize_key(i) for i in prefs.industries} else 0.0), PFIT_WEIGHTS["industry"], "Industry unknown." if not v.industry else f"Industry: {v.industry}."))
+        pfit.append(
+            Component(
+                "industry",
+                None
+                if not v.industry
+                else (
+                    1.0 if normalize_key(v.industry) in {normalize_key(i) for i in prefs.industries} else 0.0
+                ),
+                PFIT_WEIGHTS["industry"],
+                "Industry unknown." if not v.industry else f"Industry: {v.industry}.",
+            )
+        )
     pfit_score = _weighted(pfit)
 
     eligible, blocks, unknown_elig = eligibility(v, profile, prefs)
     if eligible is False:
-        pfit_score = 0.0 if pfit_score is not None else 0.0
+        pfit_score = 0.0  # a hard exclusion/ineligibility makes the preference fit zero
     overall = None
     if cfit_score is not None and pfit_score is not None:
-        overall = round(DEFAULT_WEIGHTS["candidate_fit"] * cfit_score + DEFAULT_WEIGHTS["preference_fit"] * pfit_score, 4)
+        overall = round(
+            DEFAULT_WEIGHTS["candidate_fit"] * cfit_score + DEFAULT_WEIGHTS["preference_fit"] * pfit_score, 4
+        )
     unknowns = [c.name for c in cfit + pfit if c.score is None] + unknown_elig
     return {
         "candidate_fit_score": cfit_score,
@@ -230,7 +410,11 @@ def compute(db: Session, v: JobVacancy, profile: ProfileData | None, prefs: Care
         "data_confidence_score": float(v.data_confidence or 0.0),
         "overall_score": overall,
         "eligible": eligible,
-        "weights": {"overall": DEFAULT_WEIGHTS, "candidate_fit": CFIT_WEIGHTS, "preference_fit": PFIT_WEIGHTS},
+        "weights": {
+            "overall": DEFAULT_WEIGHTS,
+            "candidate_fit": CFIT_WEIGHTS,
+            "preference_fit": PFIT_WEIGHTS,
+        },
         "breakdown": {
             "candidate_fit": [c.__dict__ for c in cfit],
             "preference_fit": [c.__dict__ for c in pfit],
@@ -241,18 +425,37 @@ def compute(db: Session, v: JobVacancy, profile: ProfileData | None, prefs: Care
     }
 
 
-def upsert_match(db: Session, v: JobVacancy, profile_version_id: int | None, profile: ProfileData | None, prefs: CareerPreferencesData) -> MatchAnalysis:
+def upsert_match(
+    db: Session,
+    v: JobVacancy,
+    profile_version_id: int | None,
+    profile: ProfileData | None,
+    prefs: CareerPreferencesData,
+) -> MatchAnalysis:
     ph = preferences_hash(prefs)
     res = compute(db, v, profile, prefs)
-    db.execute(update(MatchAnalysis).where(MatchAnalysis.vacancy_id == v.id, MatchAnalysis.is_current.is_(True)).values(is_current=False))
+    db.execute(
+        update(MatchAnalysis)
+        .where(MatchAnalysis.vacancy_id == v.id, MatchAnalysis.is_current.is_(True))
+        .values(is_current=False)
+    )
     m = db.execute(
         select(MatchAnalysis).where(
-            MatchAnalysis.vacancy_id == v.id, MatchAnalysis.profile_version_id == profile_version_id,
-            MatchAnalysis.preferences_hash == ph, MatchAnalysis.algorithm_version == ALGORITHM_VERSION,
+            MatchAnalysis.vacancy_id == v.id,
+            MatchAnalysis.profile_version_id == profile_version_id,
+            MatchAnalysis.preferences_hash == ph,
+            MatchAnalysis.algorithm_version == ALGORITHM_VERSION,
         )
     ).scalar_one_or_none()
     if m is None:
-        m = MatchAnalysis(vacancy_id=v.id, profile_version_id=profile_version_id, preferences_hash=ph, algorithm_version=ALGORITHM_VERSION, **res, is_current=True)
+        m = MatchAnalysis(
+            vacancy_id=v.id,
+            profile_version_id=profile_version_id,
+            preferences_hash=ph,
+            algorithm_version=ALGORITHM_VERSION,
+            **res,
+            is_current=True,
+        )
         db.add(m)
     else:
         for k, val in res.items():
