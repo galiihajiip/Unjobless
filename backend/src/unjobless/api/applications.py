@@ -27,7 +27,7 @@ router = APIRouter(tags=["applications"])
 
 def app_out(db: DB, r: ApplicationRecord, with_history: bool = False) -> dict[str, Any]:
     v = db.get(JobVacancy, r.vacancy_id)
-    out = {
+    out: dict[str, Any] = {
         "id": r.id,
         "vacancy_id": r.vacancy_id,
         "status": r.status.value,
