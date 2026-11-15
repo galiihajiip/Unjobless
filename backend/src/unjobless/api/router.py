@@ -10,7 +10,9 @@ from fastapi import APIRouter, Depends
 
 from unjobless.api.deps import require_owner
 
-PRIVATE_MODULES: list[str] = []
+PRIVATE_MODULES: list[str] = [
+    "unjobless.api.sources",
+]
 
 
 def build_private_router() -> APIRouter:
