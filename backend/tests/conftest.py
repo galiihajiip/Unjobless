@@ -57,7 +57,9 @@ def db(engine) -> Iterator[Session]:  # type: ignore[no-untyped-def]
     """
     connection = engine.connect()
     trans = connection.begin()
-    session = sessionmaker(bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False)()
+    session = sessionmaker(
+        bind=connection, join_transaction_mode="create_savepoint", expire_on_commit=False
+    )()
     try:
         yield session
     finally:
