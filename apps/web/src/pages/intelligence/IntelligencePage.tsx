@@ -1,6 +1,6 @@
 import { ChartNoAxesCombined } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { Alert, Badge, Card, CardTitle, EmptyState, ErrorState, LoadingCards, PageHeader, Select } from '@/components/ui'
 import { humanize } from '@/lib/format'
 import { useGet } from '@/lib/queries'
@@ -115,7 +115,9 @@ function Spark({ label, points, change, total }: { label: string; points: { week
 
 function CompanyInsight() {
   const companies = useGet<{ id: number; name: string; vacancies: number }[]>(['companies'], '/companies?limit=100')
-  const [id, setId] = useState('')
+  const [sp, setSp] = useSearchParams()
+  const id = sp.get('company') ?? ''
+  const setId = (v: string) => setSp(v ? { company: v } : {}, { replace: true })
   const c = useGet<{
     company: { name: string; website_domain: string | null }
     vacancy_activity: { total: number; by_month: Record<string, number>; internship_months_observed: string[]; recurring_internships: boolean; recent: { id: number; title: string; status: string }[] }
