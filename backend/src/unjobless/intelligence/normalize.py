@@ -15,8 +15,19 @@ from unjobless.intelligence.text import normalize_key
 # ---------------------------------------------------------------- employment / arrangement
 
 EMPLOYMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("INTERNSHIP", re.compile(r"\b(intern(ship)?s?|magang|pkl|praktik kerja lapangan|kerja praktek|kp\b|mbkm|msib)\b", re.I)),
-    ("TRAINEE", re.compile(r"\b(management trainee|mt program|trainee|officer development program|odp|graduate program)\b", re.I)),
+    (
+        "INTERNSHIP",
+        re.compile(
+            r"\b(intern(ship)?s?|magang|pkl|praktik kerja lapangan|kerja praktek|kp\b|mbkm|msib)\b", re.I
+        ),
+    ),
+    (
+        "TRAINEE",
+        re.compile(
+            r"\b(management trainee|mt program|trainee|officer development program|odp|graduate program)\b",
+            re.I,
+        ),
+    ),
     ("FREELANCE", re.compile(r"\b(freelance|freelancer|lepas)\b", re.I)),
     ("PART_TIME", re.compile(r"\b(part[- ]?time|paruh waktu)\b", re.I)),
     ("CONTRACT", re.compile(r"\b(contract|kontrak|pkwt)\b", re.I)),
@@ -26,7 +37,13 @@ EMPLOYMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 ]
 ARRANGEMENT_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("HYBRID", re.compile(r"\b(hybrid|hibrida)\b", re.I)),
-    ("REMOTE", re.compile(r"\b(remote|fully remote|wfa|work from anywhere|work from home|wfh|kerja dari rumah|jarak jauh)\b", re.I)),
+    (
+        "REMOTE",
+        re.compile(
+            r"\b(remote|fully remote|wfa|work from anywhere|work from home|wfh|kerja dari rumah|jarak jauh)\b",
+            re.I,
+        ),
+    ),
     ("ONSITE", re.compile(r"\b(on[- ]?site|wfo|work from office|kerja di kantor|onsite)\b", re.I)),
     ("FLEXIBLE", re.compile(r"\b(flexible (working|location|arrangement)|fleksibel)\b", re.I)),
 ]
@@ -78,18 +95,59 @@ def seniority(title: str) -> str | None:
 _NUM = r"(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d+)?)"
 _MULT = r"\s*(juta|jt|rb|ribu|k|m|million|mio)?"
 SALARY_RE = re.compile(
-    r"(?P<cur>rp\.?|idr|usd|us\$|\$|sgd|s\$|eur|€|myr|rm)\s*" + _NUM + _MULT
-    + r"(?:\s*(?:-|–|—|s/d|sd|sampai|to|hingga)\s*(?:rp\.?|idr|usd|\$|sgd|eur|€)?\s*" + _NUM + _MULT + r")?"
+    r"(?P<cur>rp\.?|idr|usd|us\$|\$|sgd|s\$|eur|€|myr|rm)\s*"
+    + _NUM
+    + _MULT
+    + r"(?:\s*(?:-|–|—|s/d|sd|sampai|to|hingga)\s*(?:rp\.?|idr|usd|\$|sgd|eur|€)?\s*"
+    + _NUM
+    + _MULT
+    + r")?"
     + r"(?:\s*(?:/|per|tiap)\s*(?P<per>bulan|bln|month|mo|tahun|year|yr|annum|jam|hour|hr|hari|day|minggu|week|proyek|project))?",
     re.I,
 )
-CURRENCY = {"rp": "IDR", "rp.": "IDR", "idr": "IDR", "usd": "USD", "us$": "USD", "$": "USD", "sgd": "SGD", "s$": "SGD", "eur": "EUR", "€": "EUR", "myr": "MYR", "rm": "MYR"}
-PERIOD = {
-    "bulan": "MONTH", "bln": "MONTH", "month": "MONTH", "mo": "MONTH", "tahun": "YEAR", "year": "YEAR", "yr": "YEAR",
-    "annum": "YEAR", "jam": "HOUR", "hour": "HOUR", "hr": "HOUR", "hari": "DAY", "day": "DAY", "minggu": "WEEK",
-    "week": "WEEK", "proyek": "PROJECT", "project": "PROJECT",
+CURRENCY = {
+    "rp": "IDR",
+    "rp.": "IDR",
+    "idr": "IDR",
+    "usd": "USD",
+    "us$": "USD",
+    "$": "USD",
+    "sgd": "SGD",
+    "s$": "SGD",
+    "eur": "EUR",
+    "€": "EUR",
+    "myr": "MYR",
+    "rm": "MYR",
 }
-MULT = {"juta": 1_000_000, "jt": 1_000_000, "m": 1_000_000, "million": 1_000_000, "mio": 1_000_000, "rb": 1_000, "ribu": 1_000, "k": 1_000}
+PERIOD = {
+    "bulan": "MONTH",
+    "bln": "MONTH",
+    "month": "MONTH",
+    "mo": "MONTH",
+    "tahun": "YEAR",
+    "year": "YEAR",
+    "yr": "YEAR",
+    "annum": "YEAR",
+    "jam": "HOUR",
+    "hour": "HOUR",
+    "hr": "HOUR",
+    "hari": "DAY",
+    "day": "DAY",
+    "minggu": "WEEK",
+    "week": "WEEK",
+    "proyek": "PROJECT",
+    "project": "PROJECT",
+}
+MULT = {
+    "juta": 1_000_000,
+    "jt": 1_000_000,
+    "m": 1_000_000,
+    "million": 1_000_000,
+    "mio": 1_000_000,
+    "rb": 1_000,
+    "ribu": 1_000,
+    "k": 1_000,
+}
 
 
 def _to_number(raw: str, mult: str | None, currency: str) -> float | None:
@@ -146,20 +204,59 @@ def parse_salary(text: str) -> Salary | None:
 
 
 UNPAID_RE = re.compile(r"\b(unpaid|tidak dibayar|tanpa (gaji|uang saku)|non[- ]?paid)\b", re.I)
-PAID_RE = re.compile(r"\b(paid internship|magang berbayar|uang saku|stipend|insentif|allowance|digaji)\b", re.I)
+PAID_RE = re.compile(
+    r"\b(paid internship|magang berbayar|uang saku|stipend|insentif|allowance|digaji)\b", re.I
+)
 
 
 # ---------------------------------------------------------------- dates
 
 MONTHS = {
-    "jan": 1, "januari": 1, "january": 1, "feb": 2, "februari": 2, "february": 2, "mar": 3, "maret": 3, "march": 3,
-    "apr": 4, "april": 4, "mei": 5, "may": 5, "jun": 6, "juni": 6, "june": 6, "jul": 7, "juli": 7, "july": 7,
-    "agu": 8, "agt": 8, "ags": 8, "agustus": 8, "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9,
-    "okt": 10, "oct": 10, "oktober": 10, "october": 10, "nov": 11, "nop": 11, "november": 11, "nopember": 11,
-    "des": 12, "dec": 12, "desember": 12, "december": 12,
+    "jan": 1,
+    "januari": 1,
+    "january": 1,
+    "feb": 2,
+    "februari": 2,
+    "february": 2,
+    "mar": 3,
+    "maret": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "mei": 5,
+    "may": 5,
+    "jun": 6,
+    "juni": 6,
+    "june": 6,
+    "jul": 7,
+    "juli": 7,
+    "july": 7,
+    "agu": 8,
+    "agt": 8,
+    "ags": 8,
+    "agustus": 8,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "okt": 10,
+    "oct": 10,
+    "oktober": 10,
+    "october": 10,
+    "nov": 11,
+    "nop": 11,
+    "november": 11,
+    "nopember": 11,
+    "des": 12,
+    "dec": 12,
+    "desember": 12,
+    "december": 12,
 }
 _MON = "|".join(sorted(MONTHS, key=len, reverse=True))
-DATE_TEXT_RE = re.compile(rf"\b(\d{{1,2}})\s+({_MON})\.?\s+(\d{{4}})\b|\b({_MON})\.?\s+(\d{{1,2}}),?\s+(\d{{4}})\b", re.I)
+DATE_TEXT_RE = re.compile(
+    rf"\b(\d{{1,2}})\s+({_MON})\.?\s+(\d{{4}})\b|\b({_MON})\.?\s+(\d{{1,2}}),?\s+(\d{{4}})\b", re.I
+)
 DATE_NUM_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 DEADLINE_CUE = re.compile(
     r"(deadline|batas (akhir|waktu)( pendaftaran| pengiriman)?|closing date|apply (by|before)|ditutup|"
@@ -222,19 +319,52 @@ def parse_iso_date(v: object) -> date | None:
 # ---------------------------------------------------------------- locations (Indonesia-first)
 
 ID_CITIES = {
-    "jakarta": ("Jakarta", "DKI Jakarta"), "jakarta selatan": ("Jakarta Selatan", "DKI Jakarta"), "jaksel": ("Jakarta Selatan", "DKI Jakarta"),
-    "jakarta pusat": ("Jakarta Pusat", "DKI Jakarta"), "jakpus": ("Jakarta Pusat", "DKI Jakarta"), "jakarta barat": ("Jakarta Barat", "DKI Jakarta"),
-    "jakarta timur": ("Jakarta Timur", "DKI Jakarta"), "jakarta utara": ("Jakarta Utara", "DKI Jakarta"), "bandung": ("Bandung", "Jawa Barat"),
-    "surabaya": ("Surabaya", "Jawa Timur"), "yogyakarta": ("Yogyakarta", "DI Yogyakarta"), "jogja": ("Yogyakarta", "DI Yogyakarta"),
-    "jogjakarta": ("Yogyakarta", "DI Yogyakarta"), "semarang": ("Semarang", "Jawa Tengah"), "malang": ("Malang", "Jawa Timur"),
-    "medan": ("Medan", "Sumatera Utara"), "bali": ("Bali", "Bali"), "denpasar": ("Denpasar", "Bali"), "tangerang": ("Tangerang", "Banten"),
-    "tangerang selatan": ("Tangerang Selatan", "Banten"), "tangsel": ("Tangerang Selatan", "Banten"), "bsd": ("Tangerang Selatan", "Banten"),
-    "bekasi": ("Bekasi", "Jawa Barat"), "depok": ("Depok", "Jawa Barat"), "bogor": ("Bogor", "Jawa Barat"), "makassar": ("Makassar", "Sulawesi Selatan"),
-    "palembang": ("Palembang", "Sumatera Selatan"), "batam": ("Batam", "Kepulauan Riau"), "balikpapan": ("Balikpapan", "Kalimantan Timur"),
-    "solo": ("Surakarta", "Jawa Tengah"), "surakarta": ("Surakarta", "Jawa Tengah"), "pekanbaru": ("Pekanbaru", "Riau"), "cikarang": ("Cikarang", "Jawa Barat"),
+    "jakarta": ("Jakarta", "DKI Jakarta"),
+    "jakarta selatan": ("Jakarta Selatan", "DKI Jakarta"),
+    "jaksel": ("Jakarta Selatan", "DKI Jakarta"),
+    "jakarta pusat": ("Jakarta Pusat", "DKI Jakarta"),
+    "jakpus": ("Jakarta Pusat", "DKI Jakarta"),
+    "jakarta barat": ("Jakarta Barat", "DKI Jakarta"),
+    "jakarta timur": ("Jakarta Timur", "DKI Jakarta"),
+    "jakarta utara": ("Jakarta Utara", "DKI Jakarta"),
+    "bandung": ("Bandung", "Jawa Barat"),
+    "surabaya": ("Surabaya", "Jawa Timur"),
+    "yogyakarta": ("Yogyakarta", "DI Yogyakarta"),
+    "jogja": ("Yogyakarta", "DI Yogyakarta"),
+    "jogjakarta": ("Yogyakarta", "DI Yogyakarta"),
+    "semarang": ("Semarang", "Jawa Tengah"),
+    "malang": ("Malang", "Jawa Timur"),
+    "medan": ("Medan", "Sumatera Utara"),
+    "bali": ("Bali", "Bali"),
+    "denpasar": ("Denpasar", "Bali"),
+    "tangerang": ("Tangerang", "Banten"),
+    "tangerang selatan": ("Tangerang Selatan", "Banten"),
+    "tangsel": ("Tangerang Selatan", "Banten"),
+    "bsd": ("Tangerang Selatan", "Banten"),
+    "bekasi": ("Bekasi", "Jawa Barat"),
+    "depok": ("Depok", "Jawa Barat"),
+    "bogor": ("Bogor", "Jawa Barat"),
+    "makassar": ("Makassar", "Sulawesi Selatan"),
+    "palembang": ("Palembang", "Sumatera Selatan"),
+    "batam": ("Batam", "Kepulauan Riau"),
+    "balikpapan": ("Balikpapan", "Kalimantan Timur"),
+    "solo": ("Surakarta", "Jawa Tengah"),
+    "surakarta": ("Surakarta", "Jawa Tengah"),
+    "pekanbaru": ("Pekanbaru", "Riau"),
+    "cikarang": ("Cikarang", "Jawa Barat"),
 }
-COUNTRY_WORDS = {"indonesia": "ID", "singapore": "SG", "singapura": "SG", "malaysia": "MY", "united states": "US", "usa": "US", "remote": None}
-CITY_RE = re.compile(r"\b(" + "|".join(sorted((re.escape(k) for k in ID_CITIES), key=len, reverse=True)) + r")\b", re.I)
+COUNTRY_WORDS = {
+    "indonesia": "ID",
+    "singapore": "SG",
+    "singapura": "SG",
+    "malaysia": "MY",
+    "united states": "US",
+    "usa": "US",
+    "remote": None,
+}
+CITY_RE = re.compile(
+    r"\b(" + "|".join(sorted((re.escape(k) for k in ID_CITIES), key=len, reverse=True)) + r")\b", re.I
+)
 
 
 @dataclass
@@ -253,7 +383,10 @@ def normalize_location(raw: str) -> Location:
     if m:
         city, region = ID_CITIES[m.group(1).lower()]
         return Location(raw, city, region, "ID", remote)
-    country = next((code for word, code in COUNTRY_WORDS.items() if re.search(rf"\b{re.escape(word)}\b", key) and code), None)
+    country = next(
+        (code for word, code in COUNTRY_WORDS.items() if re.search(rf"\b{re.escape(word)}\b", key) and code),
+        None,
+    )
     return Location(raw, None, None, country, remote)
 
 
@@ -274,32 +407,114 @@ def find_locations(text: str, limit: int = 5) -> list[tuple[str, int, int]]:
 # ---------------------------------------------------------------- skills taxonomy
 
 SKILL_ALIASES: dict[str, list[str]] = {
-    "Python": ["python"], "SQL": ["sql", "mysql", "postgresql", "postgres"], "Excel": ["excel", "microsoft excel", "ms excel", "spreadsheet"],
-    "JavaScript": ["javascript", "js"], "TypeScript": ["typescript", "ts"], "React": ["react", "reactjs", "react.js"],
-    "Node.js": ["node.js", "nodejs", "node"], "Java": ["java"], "Go": ["golang"], "PHP": ["php"], "Laravel": ["laravel"],
-    "Kotlin": ["kotlin"], "Swift": ["swift"], "Flutter": ["flutter"], "Dart": ["dart"], "C++": ["c++"], "C#": ["c#"],
-    "R": ["r programming", "bahasa r"], "Tableau": ["tableau"], "Power BI": ["power bi", "powerbi"], "Looker": ["looker", "looker studio", "google data studio"],
-    "Machine Learning": ["machine learning", "ml"], "Deep Learning": ["deep learning"], "Data Analysis": ["data analysis", "analisis data", "data analytics"],
-    "Statistics": ["statistics", "statistik"], "Figma": ["figma"], "UI/UX Design": ["ui/ux", "ui ux", "ux design", "ui design", "user experience"],
-    "Adobe Photoshop": ["photoshop"], "Adobe Illustrator": ["illustrator"], "Canva": ["canva"], "Git": ["git", "github", "gitlab"],
-    "Docker": ["docker"], "Kubernetes": ["kubernetes", "k8s"], "AWS": ["aws", "amazon web services"], "GCP": ["gcp", "google cloud"],
-    "Azure": ["azure"], "Linux": ["linux"], "Django": ["django"], "FastAPI": ["fastapi"], "Flask": ["flask"], "Spring": ["spring boot", "spring"],
-    "Vue.js": ["vue", "vue.js", "vuejs"], "Angular": ["angular"], "HTML": ["html"], "CSS": ["css"], "Tailwind CSS": ["tailwind"],
-    "Pandas": ["pandas"], "NumPy": ["numpy"], "TensorFlow": ["tensorflow"], "PyTorch": ["pytorch"], "Scikit-learn": ["scikit-learn", "sklearn"],
-    "NLP": ["nlp", "natural language processing"], "Computer Vision": ["computer vision"], "SEO": ["seo"], "Digital Marketing": ["digital marketing", "pemasaran digital"],
-    "Social Media": ["social media", "media sosial", "instagram", "tiktok"], "Copywriting": ["copywriting", "copywriter"], "Content Writing": ["content writing", "penulisan konten"],
-    "Accounting": ["accounting", "akuntansi"], "Finance": ["finance", "keuangan"], "Tax": ["tax", "perpajakan", "pajak"], "Auditing": ["audit", "auditing"],
-    "Project Management": ["project management", "manajemen proyek"], "Agile": ["agile", "scrum"], "Communication": ["communication", "komunikasi"],
-    "Leadership": ["leadership", "kepemimpinan"], "Teamwork": ["teamwork", "kerja sama tim", "team player"], "Problem Solving": ["problem solving", "pemecahan masalah"],
-    "English": ["english", "bahasa inggris"], "Mandarin": ["mandarin", "chinese"], "Microsoft Office": ["microsoft office", "ms office"],
-    "Public Speaking": ["public speaking"], "Customer Service": ["customer service", "layanan pelanggan"], "Sales": ["sales", "penjualan"],
-    "Recruitment": ["recruitment", "rekrutmen"], "Human Resources": ["human resources", "hrd", "sdm"], "AutoCAD": ["autocad"], "SAP": ["sap"],
-    "Selenium": ["selenium"], "Postman": ["postman"], "REST API": ["rest api", "restful"], "GraphQL": ["graphql"], "MongoDB": ["mongodb"],
-    "Redis": ["redis"], "Spark": ["apache spark", "pyspark", "spark"], "Airflow": ["airflow"], "dbt": ["dbt"], "BigQuery": ["bigquery"],
-    "Video Editing": ["video editing", "premiere", "capcut", "editing video"], "Photography": ["photography", "fotografi"],
+    "Python": ["python"],
+    "SQL": ["sql", "mysql", "postgresql", "postgres"],
+    "Excel": ["excel", "microsoft excel", "ms excel", "spreadsheet"],
+    "JavaScript": ["javascript", "js"],
+    "TypeScript": ["typescript", "ts"],
+    "React": ["react", "reactjs", "react.js"],
+    "Node.js": ["node.js", "nodejs", "node"],
+    "Java": ["java"],
+    "Go": ["golang"],
+    "PHP": ["php"],
+    "Laravel": ["laravel"],
+    "Kotlin": ["kotlin"],
+    "Swift": ["swift"],
+    "Flutter": ["flutter"],
+    "Dart": ["dart"],
+    "C++": ["c++"],
+    "C#": ["c#"],
+    "R": ["r programming", "bahasa r"],
+    "Tableau": ["tableau"],
+    "Power BI": ["power bi", "powerbi"],
+    "Looker": ["looker", "looker studio", "google data studio"],
+    "Machine Learning": ["machine learning", "ml"],
+    "Deep Learning": ["deep learning"],
+    "Data Analysis": ["data analysis", "analisis data", "data analytics"],
+    "Statistics": ["statistics", "statistik"],
+    "Figma": ["figma"],
+    "UI/UX Design": ["ui/ux", "ui ux", "ux design", "ui design", "user experience"],
+    "Adobe Photoshop": ["photoshop"],
+    "Adobe Illustrator": ["illustrator"],
+    "Canva": ["canva"],
+    "Git": ["git", "github", "gitlab"],
+    "Docker": ["docker"],
+    "Kubernetes": ["kubernetes", "k8s"],
+    "AWS": ["aws", "amazon web services"],
+    "GCP": ["gcp", "google cloud"],
+    "Azure": ["azure"],
+    "Linux": ["linux"],
+    "Django": ["django"],
+    "FastAPI": ["fastapi"],
+    "Flask": ["flask"],
+    "Spring": ["spring boot", "spring"],
+    "Vue.js": ["vue", "vue.js", "vuejs"],
+    "Angular": ["angular"],
+    "HTML": ["html"],
+    "CSS": ["css"],
+    "Tailwind CSS": ["tailwind"],
+    "Pandas": ["pandas"],
+    "NumPy": ["numpy"],
+    "TensorFlow": ["tensorflow"],
+    "PyTorch": ["pytorch"],
+    "Scikit-learn": ["scikit-learn", "sklearn"],
+    "NLP": ["nlp", "natural language processing"],
+    "Computer Vision": ["computer vision"],
+    "SEO": ["seo"],
+    "Digital Marketing": ["digital marketing", "pemasaran digital"],
+    "Social Media": ["social media", "media sosial", "instagram", "tiktok"],
+    "Copywriting": ["copywriting", "copywriter"],
+    "Content Writing": ["content writing", "penulisan konten"],
+    "Accounting": ["accounting", "akuntansi"],
+    "Finance": ["finance", "keuangan"],
+    "Tax": ["tax", "perpajakan", "pajak"],
+    "Auditing": ["audit", "auditing"],
+    "Project Management": ["project management", "manajemen proyek"],
+    "Agile": ["agile", "scrum"],
+    "Communication": ["communication", "komunikasi"],
+    "Leadership": ["leadership", "kepemimpinan"],
+    "Teamwork": ["teamwork", "kerja sama tim", "team player"],
+    "Problem Solving": ["problem solving", "pemecahan masalah"],
+    "English": ["english", "bahasa inggris"],
+    "Mandarin": ["mandarin", "chinese"],
+    "Microsoft Office": ["microsoft office", "ms office"],
+    "Public Speaking": ["public speaking"],
+    "Customer Service": ["customer service", "layanan pelanggan"],
+    "Sales": ["sales", "penjualan"],
+    "Recruitment": ["recruitment", "rekrutmen"],
+    "Human Resources": ["human resources", "hrd", "sdm"],
+    "AutoCAD": ["autocad"],
+    "SAP": ["sap"],
+    "Selenium": ["selenium"],
+    "Postman": ["postman"],
+    "REST API": ["rest api", "restful"],
+    "GraphQL": ["graphql"],
+    "MongoDB": ["mongodb"],
+    "Redis": ["redis"],
+    "Spark": ["apache spark", "pyspark", "spark"],
+    "Airflow": ["airflow"],
+    "dbt": ["dbt"],
+    "BigQuery": ["bigquery"],
+    "Video Editing": ["video editing", "premiere", "capcut", "editing video"],
+    "Photography": ["photography", "fotografi"],
 }
 _ALIAS_TO_SKILL = {normalize_key(a): k for k, aliases in SKILL_ALIASES.items() for a in [k, *aliases]}
-_AMBIGUOUS = {"go", "r", "ts", "js", "node", "spring", "spark", "ml", "sap", "sales", "tax", "audit", "git", "english"}
+_AMBIGUOUS = {
+    "go",
+    "r",
+    "ts",
+    "js",
+    "node",
+    "spring",
+    "spark",
+    "ml",
+    "sap",
+    "sales",
+    "tax",
+    "audit",
+    "git",
+    "english",
+}
 
 
 def canonical_skill(name: str) -> str:
@@ -331,13 +546,38 @@ def find_skills(text: str) -> list[tuple[str, str, int, int]]:
 
 # ---------------------------------------------------------------- education
 
-EDU_RE = re.compile(r"\b(S1|S2|S3|D3|D4|SMA|SMK|Bachelor'?s?|Master'?s?|Diploma|PhD|Sarjana|mahasiswa|student)\b", re.I)
-EDU_MAP = {"s1": "BACHELOR", "sarjana": "BACHELOR", "bachelor": "BACHELOR", "bachelors": "BACHELOR", "bachelor's": "BACHELOR", "d4": "BACHELOR",
-           "s2": "MASTER", "master": "MASTER", "masters": "MASTER", "master's": "MASTER", "s3": "DOCTORATE", "phd": "DOCTORATE",
-           "d3": "DIPLOMA", "diploma": "DIPLOMA", "sma": "HIGH_SCHOOL", "smk": "HIGH_SCHOOL", "mahasiswa": "STUDENT", "student": "STUDENT"}
-SEMESTER_RE = re.compile(r"(?:minimal|min\.?|at least|semester)\s*(?:semester\s*)?(\d{1,2})\b|\bsemester\s*(\d{1,2})\s*(?:ke atas|keatas|\+|or above|and above)", re.I)
+EDU_RE = re.compile(
+    r"\b(S1|S2|S3|D3|D4|SMA|SMK|Bachelor'?s?|Master'?s?|Diploma|PhD|Sarjana|mahasiswa|student)\b", re.I
+)
+EDU_MAP = {
+    "s1": "BACHELOR",
+    "sarjana": "BACHELOR",
+    "bachelor": "BACHELOR",
+    "bachelors": "BACHELOR",
+    "bachelor's": "BACHELOR",
+    "d4": "BACHELOR",
+    "s2": "MASTER",
+    "master": "MASTER",
+    "masters": "MASTER",
+    "master's": "MASTER",
+    "s3": "DOCTORATE",
+    "phd": "DOCTORATE",
+    "d3": "DIPLOMA",
+    "diploma": "DIPLOMA",
+    "sma": "HIGH_SCHOOL",
+    "smk": "HIGH_SCHOOL",
+    "mahasiswa": "STUDENT",
+    "student": "STUDENT",
+}
+SEMESTER_RE = re.compile(
+    r"(?:minimal|min\.?|at least|semester)\s*(?:semester\s*)?(\d{1,2})\b|\bsemester\s*(\d{1,2})\s*(?:ke atas|keatas|\+|or above|and above)",
+    re.I,
+)
 GPA_RE = re.compile(r"\b(?:ipk|gpa)\s*(?:minimal|min\.?|minimum|of|≥|>=)?\s*:?\s*([0-4][.,]\d{1,2})", re.I)
-EXPERIENCE_RE = re.compile(r"(?:minimal|min\.?|at least|minimum)?\s*(\d{1,2})\+?\s*(?:tahun|years?|yrs?)\s*(?:pengalaman|of experience|experience)", re.I)
+EXPERIENCE_RE = re.compile(
+    r"(?:minimal|min\.?|at least|minimum)?\s*(\d{1,2})\+?\s*(?:tahun|years?|yrs?)\s*(?:pengalaman|of experience|experience)",
+    re.I,
+)
 OPENINGS_RE = re.compile(r"\b(\d{1,3})\s*(?:orang|posisi|positions?|openings?|slots?|kuota)\b", re.I)
 DURATION_RE = re.compile(r"(?:durasi|duration|selama|periode)?\s*:?\s*(\d{1,2})\s*(?:bulan|months?)\b", re.I)
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
