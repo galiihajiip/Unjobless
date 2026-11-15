@@ -5,6 +5,7 @@ import { GROUPS, MOBILE_PRIMARY, NAV } from '@/app/nav'
 import { Dialog } from '@/components/ui'
 import { useAuth } from '@/lib/auth'
 import { Brand } from './Brand'
+import { UpdatePrompt } from './UpdatePrompt'
 
 function useOnline() {
   const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine)
@@ -34,6 +35,7 @@ export function AppShell() {
 
   return (
     <div className="shell">
+      {import.meta.env.PROD && <UpdatePrompt />}
       <a href="#main" className="skip-link">
         Skip to content
       </a>
