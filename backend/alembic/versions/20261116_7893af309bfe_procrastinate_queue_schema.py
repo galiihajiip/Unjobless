@@ -19,17 +19,24 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _raw_execute(sql: str) -> None:
+    """Run a multi-statement script without parameter interpolation (the SQL contains literal '%')."""
+    dbapi_conn = op.get_bind().connection.driver_connection
+    with dbapi_conn.cursor() as cur:
+        cur.execute(sql)
+
+
 SQL_FILE = Path(__file__).resolve().parents[1] / "sql" / "procrastinate_3.11.0_schema.sql"
 
 
 def upgrade() -> None:
     # Vendored from procrastinate 3.11.0 (sql/schema.sql). Future procrastinate upgrades add a new
     # Alembic revision that applies procrastinate's own sql/migrations files for that version range.
-    op.get_bind().exec_driver_sql(SQL_FILE.read_text())
+    _raw_execute(SQL_FILE.read_text())
 
 
 def downgrade() -> None:
-    op.get_bind().exec_driver_sql(
+    _raw_execute(
         """
         DROP TABLE IF EXISTS procrastinate_events, procrastinate_periodic_defers, procrastinate_jobs,
             procrastinate_workers CASCADE;
