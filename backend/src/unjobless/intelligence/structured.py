@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
 from unjobless.intelligence.text import html_to_text
 
