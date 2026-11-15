@@ -86,17 +86,26 @@ def test_private_routes_require_auth_and_csrf(client):
     assert client.get("/api/auth/sessions").status_code == 401
 
 
+PUBLIC_PATHS = {"/api/health/live", "/api/health/ready", "/api/auth/state", "/api/auth/bootstrap", "/api/auth/login", "/api/auth/logout"}
+
+
 def test_every_private_route_rejects_anonymous(client):
-    anon = TestClient(client.app, client=("203.0.113.6", 50000))
-    router = build_private_router()
+    """Every route outside the explicit public allowlist must return 401 without a session."""
+    anon = TestClient(client.app, client=("203.0.113.9", 50000))
+    paths = client.app.openapi()["paths"]
     checked = 0
-    for route in router.routes:
-        path = "/api" + route.path.replace("{", "").replace("}", "")
-        for method in route.methods - {"HEAD", "OPTIONS"}:
-            r = anon.request(method, path.replace("_id", "1"), json={})
-            assert r.status_code == 401, f"{method} {path} returned {r.status_code}"
+    for path, methods in paths.items():
+        if path in PUBLIC_PATHS:
+            continue
+        concrete = path
+        import re
+
+        concrete = re.sub(r"\{[^}]+\}", "1", concrete)
+        for method in methods:
+            r = anon.request(method.upper(), concrete, json={})
+            assert r.status_code == 401, f"{method.upper()} {path} returned {r.status_code}"
             checked += 1
-    assert checked >= 0
+    assert checked > 10
 
 
 def test_password_change_revokes_sessions(client):
