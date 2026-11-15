@@ -30,14 +30,21 @@ def routes():
         "https://login.example/robots.txt": ROBOTS,
         "https://login.example/post": (403, "text/html", "Forbidden"),
         "https://wall.example/robots.txt": ROBOTS,
-        "https://wall.example/p": (200, "text/html", "<html><body>Please verify you are human. Captcha.</body></html>"),
+        "https://wall.example/p": (
+            200,
+            "text/html",
+            "<html><body>Please verify you are human. Captcha.</body></html>",
+        ),
         "https://norobots.example/robots.txt": (200, "text/plain", "User-agent: *\nDisallow: /"),
         "https://norobots.example/x": (200, "text/html", PAGE),
     }
 
 
 def test_line_validation_dedupes_and_blocks(db):
-    lines = imports.check_lines(db, "https://acme.example/jobs/1\nhttps://acme.example/jobs/1?utm_source=x\nhttp://127.0.0.1/admin\nftp://x.example/\nnot a url\nacme.example/jobs/2")
+    lines = imports.check_lines(
+        db,
+        "https://acme.example/jobs/1\nhttps://acme.example/jobs/1?utm_source=x\nhttp://127.0.0.1/admin\nftp://x.example/\nnot a url\nacme.example/jobs/2",
+    )
     ok = [c for c in lines if c.ok]
     assert [c.url for c in ok] == ["https://acme.example/jobs/1", "https://acme.example/jobs/2"]
     errs = {c.raw: c.error for c in lines if not c.ok}
@@ -47,14 +54,24 @@ def test_line_validation_dedupes_and_blocks(db):
 
 def test_batch_partial_failure_and_per_item_states(engine, clean_db):
     with session_scope() as db:
-        batch, _ = imports.create_url_batch(db, "https://acme.example/jobs/1\nhttps://login.example/post\nhttps://wall.example/p\nhttps://norobots.example/x")
-        ids = [i.id for i in db.execute(select(ImportItem).where(ImportItem.batch_id == batch.id).order_by(ImportItem.position)).scalars()]
+        batch, _ = imports.create_url_batch(
+            db,
+            "https://acme.example/jobs/1\nhttps://login.example/post\nhttps://wall.example/p\nhttps://norobots.example/x",
+        )
+        ids = [
+            i.id
+            for i in db.execute(
+                select(ImportItem).where(ImportItem.batch_id == batch.id).order_by(ImportItem.position)
+            ).scalars()
+        ]
         bid = batch.id
     f = PublicFetcher(routes())
     for i in ids:
         imports.process_import_item(i, fetcher=f, use_ai=False)
     with session_scope() as db:
-        items = {i.input_url: i for i in db.execute(select(ImportItem).where(ImportItem.batch_id == bid)).scalars()}
+        items = {
+            i.input_url: i for i in db.execute(select(ImportItem).where(ImportItem.batch_id == bid)).scalars()
+        }
         assert items["https://acme.example/jobs/1"].status == ImportItemStatus.NEEDS_REVIEW
         assert items["https://acme.example/jobs/1"].extraction["extraction"]["title"]
         assert items["https://login.example/post"].status == ImportItemStatus.UNAVAILABLE
@@ -106,7 +123,9 @@ def test_paste_preserves_exact_text_and_lead_stays_unverified(engine, clean_db):
 
     text = "Kantorku   lagi buka posisi Product Analyst, bisa aku refer.\nDM aku ya 🙏"
     with session_scope() as db:
-        batch = imports.create_paste_batch(db, [imports.PasteInput(text=text, platform="Instagram", author_label="@public_account")])
+        batch = imports.create_paste_batch(
+            db, [imports.PasteInput(text=text, platform="Instagram", author_label="@public_account")]
+        )
         item = db.execute(select(ImportItem).where(ImportItem.batch_id == batch.id)).scalar_one()
         iid, vid = item.id, item.raw_version_id
         assert db.get(RawSourceVersion, vid).raw_text == text
