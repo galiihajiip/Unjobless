@@ -2,7 +2,7 @@
 # Builds the PWA and serves it with Caddy (TLS, security headers, reverse proxy to the API).
 FROM node:26-alpine AS web
 WORKDIR /src
-RUN corepack enable
+RUN npm install -g pnpm@11.18.0
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json apps/web/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --filter "@unjobless/web..."
