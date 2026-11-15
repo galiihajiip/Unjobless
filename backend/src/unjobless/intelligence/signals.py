@@ -519,7 +519,10 @@ ID_ROLE_RE = re.compile(
 )
 
 
-ROLE_PREFIX = re.compile(r"^(?:(?:info|lowongan|loker|lowker|dicari|dibutuhkan|hiring|we(?:'re| are) hiring|now hiring|open recruitment|oprec)\s*:?\s*)+(?:an?\s+)?", re.I)
+ROLE_PREFIX = re.compile(
+    r"^(?:(?:info|lowongan|loker|lowker|dicari|dibutuhkan|hiring|we(?:'re| are) hiring|now hiring|open recruitment|oprec)\s*:?\s*)+(?:an?\s+)?",
+    re.I,
+)
 ROLE_CUT = re.compile(r"\s+(?:at|di|for|untuk|with|dengan|in)\s+.*$|\s*[—–|(].*$|\s+-\s+.*$", re.I)
 
 
