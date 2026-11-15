@@ -12,6 +12,7 @@ from unjobless.api.deps import require_owner
 
 PRIVATE_MODULES: list[str] = [
     "unjobless.api.sources",
+    "unjobless.api.ai",
 ]
 
 
