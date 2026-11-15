@@ -137,9 +137,15 @@ def process_version(db: Session, version_id: int, *, use_ai: bool = True) -> Non
     if version.processing_status == ProcessingStatus.SUCCEEDED:
         # Identical content re-imported: the raw version is shared, but each new import item still
         # needs its own review proposal.
-        pending = db.execute(
-            select(ImportItem).where(ImportItem.raw_version_id == version.id, ImportItem.status == ImportItemStatus.EXTRACTED)
-        ).scalars().all()
+        pending = (
+            db.execute(
+                select(ImportItem).where(
+                    ImportItem.raw_version_id == version.id, ImportItem.status == ImportItemStatus.EXTRACTED
+                )
+            )
+            .scalars()
+            .all()
+        )
         if not pending:
             return
         result = analyze(db, version, use_ai=use_ai)
