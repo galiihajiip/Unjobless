@@ -23,7 +23,7 @@ def seed(url: str, n: int) -> None:
     eng = create_engine(url)
     rng = random.Random(42)
     with eng.begin() as c:
-        c.execute(text("INSERT INTO companies (name, normalized_name) SELECT 'Company ' || g, 'company ' || g FROM generate_series(1, 400) g"))
+        c.execute(text("INSERT INTO companies (name, normalized_name, manually_verified) SELECT 'Company ' || g, 'company ' || g, false FROM generate_series(1, 400) g"))
         rows = []
         for i in range(n):
             t = f"{rng.choice(['', 'Junior ', 'Senior ', 'Magang '])}{rng.choice(TITLES)}"
