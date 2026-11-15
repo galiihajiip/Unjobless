@@ -42,7 +42,9 @@ def current_session(request: Request, db: DB) -> OwnerSession | None:
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
         return None
-    s = db.execute(select(OwnerSession).where(OwnerSession.token_hash == token_hash(token))).scalar_one_or_none()
+    s = db.execute(
+        select(OwnerSession).where(OwnerSession.token_hash == token_hash(token))
+    ).scalar_one_or_none()
     if s is None or s.revoked_at is not None:
         return None
     now = utcnow()
