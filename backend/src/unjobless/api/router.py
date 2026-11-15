@@ -18,6 +18,8 @@ PRIVATE_MODULES: list[str] = [
     "unjobless.api.profile",
     "unjobless.api.compare",
     "unjobless.api.applications",
+    "unjobless.api.intelligence",
+    "unjobless.api.settings",
 ]
 
 
