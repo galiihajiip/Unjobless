@@ -205,7 +205,7 @@ def integrity_check() -> dict[str, Any]:
             ("source_media_assets", "blob_ref"),
             ("export_files", "blob_ref"),
         ):
-            for (ref,) in c.execute(text(f"select {col} from {table} where {col} is not null")):  # noqa: S608
+            for (ref,) in c.execute(text(f"select {col} from {table} where {col} is not null")):
                 if not fs.exists(ref):
                     missing.append(f"{table}:{ref}")
         counts = {
