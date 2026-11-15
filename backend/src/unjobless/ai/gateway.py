@@ -29,7 +29,14 @@ from unjobless.core.crypto import decrypt_secret
 from unjobless.core.errors import AppError
 from unjobless.core.logging import get_logger
 from unjobless.core.time import utcnow
-from unjobless.db.models import AIModelConfig, AIPromptVersion, AIProviderConfig, AITaskRun, AIUsageEvent, AppSettings
+from unjobless.db.models import (
+    AIModelConfig,
+    AIPromptVersion,
+    AIProviderConfig,
+    AITaskRun,
+    AIUsageEvent,
+    AppSettings,
+)
 from unjobless.domain.enums import AITaskStatus
 from unjobless.domain.state_machines import AI_TASK
 
@@ -85,10 +92,14 @@ def resolve_route(db: Session, task: str, provider_id: int | None = None) -> tup
     if pid:
         p = db.get(AIProviderConfig, pid)
     else:
-        p = db.execute(select(AIProviderConfig).where(AIProviderConfig.is_default.is_(True))).scalar_one_or_none()
+        p = db.execute(
+            select(AIProviderConfig).where(AIProviderConfig.is_default.is_(True))
+        ).scalar_one_or_none()
     if p is None or not p.enabled:
         raise AINotConfigured("No enabled AI provider is configured. Add one in AI Studio.")
-    model = route.get("model") or p.default_model or (DEFAULT_ANTHROPIC_MODEL if p.kind == "anthropic" else None)
+    model = (
+        route.get("model") or p.default_model or (DEFAULT_ANTHROPIC_MODEL if p.kind == "anthropic" else None)
+    )
     if not model:
         raise AINotConfigured(f"Provider {p.name!r} has no model selected.")
     return p, model
@@ -113,7 +124,11 @@ def _price(db: Session, provider: AIProviderConfig, model: str) -> tuple[float, 
 
 def spent_today(db: Session) -> float:
     since = utcnow() - timedelta(days=1)
-    return float(db.execute(select(func.coalesce(func.sum(AIUsageEvent.cost_estimate), 0.0)).where(AIUsageEvent.at > since)).scalar_one())
+    return float(
+        db.execute(
+            select(func.coalesce(func.sum(AIUsageEvent.cost_estimate), 0.0)).where(AIUsageEvent.at > since)
+        ).scalar_one()
+    )
 
 
 def _ensure_prompt_version(db: Session, t: AITask) -> None:
@@ -121,7 +136,14 @@ def _ensure_prompt_version(db: Session, t: AITask) -> None:
         select(AIPromptVersion.id).where(AIPromptVersion.task == t.name, AIPromptVersion.version == t.version)
     ).first()
     if not exists:
-        db.add(AIPromptVersion(task=t.name, version=t.version, template_hash=t.template_hash(), schema_version=t.schema_version))
+        db.add(
+            AIPromptVersion(
+                task=t.name,
+                version=t.version,
+                template_hash=t.template_hash(),
+                schema_version=t.schema_version,
+            )
+        )
 
 
 def run_task(
@@ -188,13 +210,17 @@ def run_task(
 
 
 def _fallback_provider(db: Session, primary: AIProviderConfig) -> tuple[AIProviderConfig, str] | None:
-    fb = db.execute(
-        select(AIProviderConfig).where(
-            AIProviderConfig.allow_as_fallback.is_(True),
-            AIProviderConfig.enabled.is_(True),
-            AIProviderConfig.id != primary.id,
+    fb = (
+        db.execute(
+            select(AIProviderConfig).where(
+                AIProviderConfig.allow_as_fallback.is_(True),
+                AIProviderConfig.enabled.is_(True),
+                AIProviderConfig.id != primary.id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if fb is None:
         return None
     model = fb.default_model or (DEFAULT_ANTHROPIC_MODEL if fb.kind == "anthropic" else None)
@@ -209,7 +235,9 @@ def _finish(run: AITaskRun, status: AITaskStatus, error: str | None = None) -> N
     run.finished_at = utcnow()
 
 
-def _attempt(db: Session, t: AITask, prov: AIProviderConfig, model: str, user: str, run: AITaskRun) -> BaseModel:
+def _attempt(
+    db: Session, t: AITask, prov: AIProviderConfig, model: str, user: str, run: AITaskRun
+) -> BaseModel:
     AI_TASK.check(run.status, AITaskStatus.RUNNING)
     run.status = AITaskStatus.RUNNING
     adapter = _adapter(prov)
@@ -218,7 +246,13 @@ def _attempt(db: Session, t: AITask, prov: AIProviderConfig, model: str, user: s
     for attempt in (1, 2):  # one repair retry for format/validation errors only
         run.attempts += 1
         res = adapter.complete_json(
-            model=model, system=t.system, user=prompt, schema=schema, max_tokens=t.max_tokens, effort=t.effort, timeout=t.timeout
+            model=model,
+            system=t.system,
+            user=prompt,
+            schema=schema,
+            max_tokens=t.max_tokens,
+            effort=t.effort,
+            timeout=t.timeout,
         )
         price = _price(db, prov, model)
         cost = None
@@ -226,8 +260,14 @@ def _attempt(db: Session, t: AITask, prov: AIProviderConfig, model: str, user: s
             cost = (res.input_tokens * price[0] + res.output_tokens * price[1]) / 1_000_000
         db.add(
             AIUsageEvent(
-                task_run_id=run.id, provider_id=prov.id, model=res.model, task=t.name,
-                input_tokens=res.input_tokens, output_tokens=res.output_tokens, cost_estimate=cost, latency_ms=res.latency_ms,
+                task_run_id=run.id,
+                provider_id=prov.id,
+                model=res.model,
+                task=t.name,
+                input_tokens=res.input_tokens,
+                output_tokens=res.output_tokens,
+                cost_estimate=cost,
+                latency_ms=res.latency_ms,
             )
         )
         try:
@@ -235,7 +275,10 @@ def _attempt(db: Session, t: AITask, prov: AIProviderConfig, model: str, user: s
         except ValidationError as e:
             errs = "; ".join(f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors()[:10])
             if attempt == 1:
-                prompt = user + f"\n\nYour previous output failed schema validation ({errs}). Return corrected JSON only."
+                prompt = (
+                    user
+                    + f"\n\nYour previous output failed schema validation ({errs}). Return corrected JSON only."
+                )
                 continue
             _finish(run, AITaskStatus.FAILED_VALIDATION, errs)
             raise AITaskFailed("The AI output did not match the expected format.") from e
