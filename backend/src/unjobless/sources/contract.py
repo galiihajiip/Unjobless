@@ -48,7 +48,9 @@ class ConnectorInfo:
     content_types: tuple[str, ...] = ("application/json",)
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     attribution: str = "Link to the original posting and name the source."
-    freshness_strategy: str = "Re-list on each run; items missing from a complete listing are marked not-seen (never closed)."
+    freshness_strategy: str = (
+        "Re-list on each run; items missing from a complete listing are marked not-seen (never closed)."
+    )
     terms_review: str = "Review the source's terms before enabling."
     user_visible: bool = True
 
