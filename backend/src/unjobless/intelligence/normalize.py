@@ -260,7 +260,7 @@ DATE_TEXT_RE = re.compile(
 DATE_NUM_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
 DEADLINE_CUE = re.compile(
     r"(deadline|batas (akhir|waktu)( pendaftaran| pengiriman)?|closing date|apply (by|before)|ditutup|"
-    r"pendaftaran (ditutup|dibuka hingga|sampai)|last day|paling lambat|terakhir|until|hingga|s/d)",
+    r"pendaftaran (ditutup|dibuka hingga|sampai)|last day|paling lambat|terakhir|until|hingga|s/d|before|\bby)",
     re.I,
 )
 START_CUE = re.compile(r"(start date|mulai|start(s|ing)? on|periode magang)", re.I)
