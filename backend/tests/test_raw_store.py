@@ -11,7 +11,14 @@ pytestmark = pytest.mark.db
 
 
 def item(text="Hiring data intern", **kw):
-    return CollectedItem(native_id=kw.pop("native_id", "j1"), url=kw.pop("url", "https://x.test/j/1?utm_source=a"), content_type="text/plain", raw_text=text, title=kw.pop("title", "Data Intern"), **kw)
+    return CollectedItem(
+        native_id=kw.pop("native_id", "j1"),
+        url=kw.pop("url", "https://x.test/j/1?utm_source=a"),
+        content_type="text/plain",
+        raw_text=text,
+        title=kw.pop("title", "Data Intern"),
+        **kw,
+    )
 
 
 @pytest.fixture
@@ -49,13 +56,17 @@ def test_canonical_url_identity_without_native_id(db, src):
 
 
 def test_missing_metadata_is_ok(db, src):
-    r = store_item(db, src, CollectedItem(native_id=None, url=None, content_type="text/plain", raw_text="only text"))
+    r = store_item(
+        db, src, CollectedItem(native_id=None, url=None, content_type="text/plain", raw_text="only text")
+    )
     assert r.outcome == RunItemOutcome.NEW
     assert r.version.source_published_at is None
 
 
 def test_secrets_never_stored_in_metadata():
-    meta = sanitize_metadata({"Cookie": "a", "headers": {"Authorization": "Bearer x", "etag": "1"}, "api_key": "k", "ok": 1})
+    meta = sanitize_metadata(
+        {"Cookie": "a", "headers": {"Authorization": "Bearer x", "etag": "1"}, "api_key": "k", "ok": 1}
+    )
     assert meta == {"headers": {"etag": "1"}, "ok": 1}
 
 
