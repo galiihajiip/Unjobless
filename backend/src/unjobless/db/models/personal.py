@@ -52,7 +52,9 @@ class ResumeDocument(Base):
 class ResumeExtraction(Base):
     __tablename__ = "resume_extractions"
     id: Mapped[int] = pk()
-    resume_id: Mapped[int] = mapped_column(ForeignKey("resume_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_id: Mapped[int] = mapped_column(
+        ForeignKey("resume_documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     sections: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     warnings: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
@@ -67,7 +69,12 @@ class CandidateProfile(Base, Timestamps):
     id: Mapped[int] = pk()
     singleton: Mapped[int] = mapped_column(Integer, nullable=False, default=1, unique=True)
     active_version_id: Mapped[int | None] = mapped_column(
-        ForeignKey("candidate_profile_versions.id", ondelete="SET NULL", use_alter=True, name="fk_profile_active_version")
+        ForeignKey(
+            "candidate_profile_versions.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_profile_active_version",
+        )
     )
 
 
@@ -75,11 +82,17 @@ class CandidateProfileVersion(Base):
     __tablename__ = "candidate_profile_versions"
     __table_args__ = (UniqueConstraint("profile_id", "version_no", name="uq_profile_version_no"),)
     id: Mapped[int] = pk()
-    profile_id: Mapped[int] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False
+    )
     version_no: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[ProfileVersionStatus] = mapped_column(enum_col(ProfileVersionStatus), nullable=False)
-    source_resume_id: Mapped[int | None] = mapped_column(ForeignKey("resume_documents.id", ondelete="SET NULL"))
-    extraction_id: Mapped[int | None] = mapped_column(ForeignKey("resume_extractions.id", ondelete="SET NULL"))
+    source_resume_id: Mapped[int | None] = mapped_column(
+        ForeignKey("resume_documents.id", ondelete="SET NULL")
+    )
+    extraction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("resume_extractions.id", ondelete="SET NULL")
+    )
     data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -92,7 +105,9 @@ class CandidateSkill(Base):
     __tablename__ = "candidate_skills"
     __table_args__ = (UniqueConstraint("profile_version_id", "normalized_skill", name="uq_candidate_skill"),)
     id: Mapped[int] = pk()
-    profile_version_id: Mapped[int] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="CASCADE"), nullable=False)
+    profile_version_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="CASCADE"), nullable=False
+    )
     skill: Mapped[str] = mapped_column(String(200), nullable=False)
     normalized_skill: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     evidence_refs: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
@@ -112,15 +127,25 @@ class CareerPreferences(Base, Timestamps):
 class MatchAnalysis(Base):
     __tablename__ = "match_analyses"
     __table_args__ = (
-        UniqueConstraint("vacancy_id", "profile_version_id", "preferences_hash", "algorithm_version", name="uq_match"),
-        CheckConstraint("candidate_fit_score IS NULL OR candidate_fit_score BETWEEN 0 AND 1", name="cfit_range"),
-        CheckConstraint("preference_fit_score IS NULL OR preference_fit_score BETWEEN 0 AND 1", name="pfit_range"),
+        UniqueConstraint(
+            "vacancy_id", "profile_version_id", "preferences_hash", "algorithm_version", name="uq_match"
+        ),
+        CheckConstraint(
+            "candidate_fit_score IS NULL OR candidate_fit_score BETWEEN 0 AND 1", name="cfit_range"
+        ),
+        CheckConstraint(
+            "preference_fit_score IS NULL OR preference_fit_score BETWEEN 0 AND 1", name="pfit_range"
+        ),
         CheckConstraint("data_confidence_score BETWEEN 0 AND 1", name="dconf_range"),
         Index("ix_match_vacancy_current", "vacancy_id", "is_current"),
     )
     id: Mapped[int] = pk()
-    vacancy_id: Mapped[int] = mapped_column(ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False)
-    profile_version_id: Mapped[int | None] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="CASCADE"))
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False
+    )
+    profile_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="CASCADE")
+    )
     preferences_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     algorithm_version: Mapped[str] = mapped_column(String(20), nullable=False)
     candidate_fit_score: Mapped[float | None] = mapped_column(Float)
@@ -146,7 +171,9 @@ class JobComparison(Base):
     id: Mapped[int] = pk()
     weights: Mapped[dict[str, float]] = mapped_column(JSONB, nullable=False)
     result: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    profile_version_id: Mapped[int | None] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="SET NULL"))
+    profile_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="SET NULL")
+    )
     algorithm_version: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -161,8 +188,12 @@ class JobComparisonItem(Base):
         UniqueConstraint("comparison_id", "vacancy_id", name="uq_cmp_vacancy"),
     )
     id: Mapped[int] = pk()
-    comparison_id: Mapped[int] = mapped_column(ForeignKey("job_comparisons.id", ondelete="CASCADE"), nullable=False)
-    vacancy_id: Mapped[int] = mapped_column(ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False)
+    comparison_id: Mapped[int] = mapped_column(
+        ForeignKey("job_comparisons.id", ondelete="CASCADE"), nullable=False
+    )
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False
+    )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
@@ -185,8 +216,12 @@ class TailoredResume(Base):
 
     __tablename__ = "tailored_resumes"
     id: Mapped[int] = pk()
-    vacancy_id: Mapped[int] = mapped_column(ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False, index=True)
-    profile_version_id: Mapped[int] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="RESTRICT"), nullable=False)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    profile_version_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="RESTRICT"), nullable=False
+    )
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("tailored_resumes.id", ondelete="SET NULL"))
     language: Mapped[str] = mapped_column(String(5), nullable=False)
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -199,9 +234,15 @@ class TailoredResume(Base):
 class CoverLetter(Base):
     __tablename__ = "cover_letters"
     id: Mapped[int] = pk()
-    vacancy_id: Mapped[int] = mapped_column(ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False, index=True)
-    profile_version_id: Mapped[int] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="RESTRICT"), nullable=False)
-    tailored_resume_id: Mapped[int | None] = mapped_column(ForeignKey("tailored_resumes.id", ondelete="SET NULL"))
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    profile_version_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="RESTRICT"), nullable=False
+    )
+    tailored_resume_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tailored_resumes.id", ondelete="SET NULL")
+    )
     language: Mapped[str] = mapped_column(String(5), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     claims: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
@@ -212,9 +253,13 @@ class CoverLetter(Base):
 class ExportFile(Base):
     __tablename__ = "export_files"
     id: Mapped[int] = pk()
-    tailored_resume_id: Mapped[int | None] = mapped_column(ForeignKey("tailored_resumes.id", ondelete="CASCADE"))
+    tailored_resume_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tailored_resumes.id", ondelete="CASCADE")
+    )
     cover_letter_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letters.id", ondelete="CASCADE"))
-    profile_version_id: Mapped[int | None] = mapped_column(ForeignKey("candidate_profile_versions.id", ondelete="SET NULL"))
+    profile_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("candidate_profile_versions.id", ondelete="SET NULL")
+    )
     vacancy_id: Mapped[int | None] = mapped_column(ForeignKey("job_vacancies.id", ondelete="SET NULL"))
     format: Mapped[str] = mapped_column(String(8), nullable=False)
     template: Mapped[str] = mapped_column(String(40), nullable=False)
@@ -228,12 +273,16 @@ class ApplicationRecord(Base, Timestamps):
     __tablename__ = "application_records"
     __table_args__ = (UniqueConstraint("vacancy_id", name="uq_application_vacancy"),)
     id: Mapped[int] = pk()
-    vacancy_id: Mapped[int] = mapped_column(ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False)
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False
+    )
     status: Mapped[ApplicationStatus] = mapped_column(enum_col(ApplicationStatus), nullable=False, index=True)
     applied_at: Mapped[date | None] = mapped_column(Date)
     follow_up_at: Mapped[date | None] = mapped_column(Date)
     deadline: Mapped[date | None] = mapped_column(Date)
-    tailored_resume_id: Mapped[int | None] = mapped_column(ForeignKey("tailored_resumes.id", ondelete="SET NULL"))
+    tailored_resume_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tailored_resumes.id", ondelete="SET NULL")
+    )
     cover_letter_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letters.id", ondelete="SET NULL"))
     notes: Mapped[str | None] = mapped_column(Text)
     contact_notes: Mapped[str | None] = mapped_column(Text)
@@ -242,7 +291,9 @@ class ApplicationRecord(Base, Timestamps):
 class ApplicationStatusHistory(Base):
     __tablename__ = "application_status_history"
     id: Mapped[int] = pk()
-    application_id: Mapped[int] = mapped_column(ForeignKey("application_records.id", ondelete="CASCADE"), nullable=False, index=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("application_records.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     from_status: Mapped[ApplicationStatus | None] = mapped_column(enum_col(ApplicationStatus))
     to_status: Mapped[ApplicationStatus] = mapped_column(enum_col(ApplicationStatus), nullable=False)
     note: Mapped[str | None] = mapped_column(Text)
@@ -276,7 +327,9 @@ class AIModelConfig(Base, Timestamps):
     __tablename__ = "ai_model_configs"
     __table_args__ = (UniqueConstraint("provider_id", "model", name="uq_ai_model"),)
     id: Mapped[int] = pk()
-    provider_id: Mapped[int] = mapped_column(ForeignKey("ai_provider_configs.id", ondelete="CASCADE"), nullable=False)
+    provider_id: Mapped[int] = mapped_column(
+        ForeignKey("ai_provider_configs.id", ondelete="CASCADE"), nullable=False
+    )
     model: Mapped[str] = mapped_column(String(120), nullable=False)
     input_price_per_mtok: Mapped[float | None] = mapped_column(Float)
     output_price_per_mtok: Mapped[float | None] = mapped_column(Float)
@@ -309,14 +362,18 @@ class AITaskRun(Base):
     output: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error: Mapped[str | None] = mapped_column(Text)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AIUsageEvent(Base):
     __tablename__ = "ai_usage_events"
     id: Mapped[int] = pk()
-    task_run_id: Mapped[int | None] = mapped_column(ForeignKey("ai_task_runs.id", ondelete="SET NULL"), index=True)
+    task_run_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ai_task_runs.id", ondelete="SET NULL"), index=True
+    )
     provider_id: Mapped[int | None] = mapped_column(ForeignKey("ai_provider_configs.id", ondelete="SET NULL"))
     model: Mapped[str | None] = mapped_column(String(120))
     task: Mapped[str] = mapped_column(String(60), nullable=False)
