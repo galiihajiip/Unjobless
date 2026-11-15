@@ -169,7 +169,7 @@ def feed(
         .outerjoin(s, s.vacancy_id == JobVacancy.id)
         .where(JobVacancy.merged_into_id.is_(None))
     )
-    conds = []
+    conds: list[Any] = []
     if status:
         conds.append(JobVacancy.verification_status.in_([V(x) for x in status]))
     elif not include_closed:
@@ -230,7 +230,7 @@ def feed(
         conds.append(s.state == SavedState.DISMISSED)
     elif saved == "hide_dismissed":
         conds.append(or_(s.state.is_(None), s.state != SavedState.DISMISSED))
-    rank = None
+    rank: Any = None
     if q:
         tsq = func.websearch_to_tsquery("simple", q)
         conds.append(JobVacancy.search_vector.op("@@")(tsq))
@@ -241,6 +241,7 @@ def feed(
     ).scalar_one()
 
     # Keyset pagination: (sort_key, id) — stable across pages.
+    key: Any
     if sort == "best_fit":
         key, desc = func.coalesce(m.candidate_fit_score, -1.0), True
     elif sort == "preference_fit":
@@ -271,7 +272,7 @@ def feed(
         .order_by(key.desc() if desc else key.asc(), JobVacancy.id.desc())
         .limit(limit + 1)
     )
-    rows = db.execute(query).all()
+    rows: list[Any] = list(db.execute(query).all())
     more = len(rows) > limit
     rows = rows[:limit]
     ids = [r[0].id for r in rows]
