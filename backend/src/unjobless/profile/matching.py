@@ -66,7 +66,7 @@ def _weighted(components: list[Component]) -> float | None:
     if not known:
         return None
     tw = sum(c.weight for c in known)
-    return round(sum(c.score * c.weight for c in known) / tw, 4)  # type: ignore[operator]
+    return round(sum((c.score or 0.0) * c.weight for c in known) / tw, 4)
 
 
 def get_preferences(db: Session) -> CareerPreferencesData:
