@@ -24,7 +24,15 @@ from unjobless.db.models import (
     Source,
     VacancyStatusHistory,
 )
-from unjobless.domain.enums import Actor, EmploymentType, FieldOrigin, OpportunityClassification, PayPeriod, Seniority, WorkArrangement
+from unjobless.domain.enums import (
+    Actor,
+    EmploymentType,
+    FieldOrigin,
+    OpportunityClassification,
+    PayPeriod,
+    Seniority,
+    WorkArrangement,
+)
 from unjobless.domain.enums import VerificationStatus as V
 from unjobless.fetch.urls import canonicalize_url
 from unjobless.intelligence import lifecycle
@@ -34,14 +42,37 @@ from unjobless.intelligence.extraction import data_confidence
 from unjobless.intelligence.text import find_span, normalize_key
 
 SCALAR_FIELDS = {
-    "alternative_title", "department", "job_family", "industry", "recruitment_batch", "education_level",
-    "openings_count", "min_semester", "experience_years_min", "min_gpa", "internship_duration_months", "contract_duration_months",
-    "salary_currency", "is_paid",
+    "alternative_title",
+    "department",
+    "job_family",
+    "industry",
+    "recruitment_batch",
+    "education_level",
+    "openings_count",
+    "min_semester",
+    "experience_years_min",
+    "min_gpa",
+    "internship_duration_months",
+    "contract_duration_months",
+    "salary_currency",
+    "is_paid",
 }
 DETAIL_FIELDS = [
-    "responsibilities", "deliverables", "selection_stages", "application_documents", "working_hours", "conversion_info",
-    "reporting_line", "majors", "tools", "certifications", "legal_requirements", "soft_skills", "language_requirements",
-    "application_email", "portfolio_required",
+    "responsibilities",
+    "deliverables",
+    "selection_stages",
+    "application_documents",
+    "working_hours",
+    "conversion_info",
+    "reporting_line",
+    "majors",
+    "tools",
+    "certifications",
+    "legal_requirements",
+    "soft_skills",
+    "language_requirements",
+    "application_email",
+    "portfolio_required",
 ]
 
 
@@ -53,7 +84,15 @@ def _date(v: str | None) -> date | None:
     return N.parse_iso_date(v)
 
 
-def apply_extraction(db: Session, v: JobVacancy, x: JobExtraction, *, version: RawSourceVersion | None, source_text: str, origin_override: FieldOrigin | None = None) -> None:
+def apply_extraction(
+    db: Session,
+    v: JobVacancy,
+    x: JobExtraction,
+    *,
+    version: RawSourceVersion | None,
+    source_text: str,
+    origin_override: FieldOrigin | None = None,
+) -> None:
     """Write typed columns + child tables + evidence from an extraction. Replaces previous derived children."""
     v.title = (x.title or v.title or "Untitled opportunity")[:300]
     v.normalized_title = normalize_key(v.title)[:300]
@@ -77,7 +116,9 @@ def apply_extraction(db: Session, v: JobVacancy, x: JobExtraction, *, version: R
     v.application_open_date = _date(x.application_open_date)
     v.start_date = _date(x.start_date)
     v.application_url = x.application_url
-    v.remote_eligible_countries = [c[:2].upper() for c in x.remote_eligible_countries if c and len(c) >= 2][:20] or None
+    v.remote_eligible_countries = [c[:2].upper() for c in x.remote_eligible_countries if c and len(c) >= 2][
+        :20
+    ] or None
     v.location_text = ", ".join(x.locations)[:300] or None
     v.language = x.language
     v.skills_text = " ".join(x.required_skills + x.preferred_skills + x.tools)[:5000] or None
@@ -90,27 +131,53 @@ def apply_extraction(db: Session, v: JobVacancy, x: JobExtraction, *, version: R
         key = e.field if e.field != "salary" else "salary_min"
         cur = meta.get(key)
         if cur is None or e.confidence > cur["confidence"]:
-            meta[key] = {"origin": (origin_override.value if origin_override else e.origin), "confidence": e.confidence}
-    meta["evidenced_fields"] = sorted({e.field if e.field != "salary" else "salary_min" for e in x.evidence if e.origin == "EXPLICIT"})
+            meta[key] = {
+                "origin": (origin_override.value if origin_override else e.origin),
+                "confidence": e.confidence,
+            }
+    meta["evidenced_fields"] = sorted(
+        {e.field if e.field != "salary" else "salary_min" for e in x.evidence if e.origin == "EXPLICIT"}
+    )
     v.field_meta = meta
     db.flush()
 
     # children (replace)
     for model in (JobSkill, JobRequirement, JobBenefit, JobLocation):
         db.execute(delete(model).where(model.vacancy_id == v.id))
-    db.execute(delete(JobEvidence).where(JobEvidence.vacancy_id == v.id, JobEvidence.raw_version_id == (version.id if version else None)))
+    db.execute(
+        delete(JobEvidence).where(
+            JobEvidence.vacancy_id == v.id, JobEvidence.raw_version_id == (version.id if version else None)
+        )
+    )
     seen = set()
-    for name, req in [(s, True) for s in x.required_skills] + [(s, False) for s in x.preferred_skills + x.tools]:
+    for name, req in [(s, True) for s in x.required_skills] + [
+        (s, False) for s in x.preferred_skills + x.tools
+    ]:
         key = N.normalized_skill_key(name)
         if key and key not in seen:
             seen.add(key)
-            db.add(JobSkill(vacancy_id=v.id, skill=N.canonical_skill(name)[:200], normalized_skill=key[:200], required=req))
+            db.add(
+                JobSkill(
+                    vacancy_id=v.id,
+                    skill=N.canonical_skill(name)[:200],
+                    normalized_skill=key[:200],
+                    required=req,
+                )
+            )
     for kind, values in (
-        ("major", x.majors), ("language", x.language_requirements), ("certification", x.certifications),
-        ("legal", x.legal_requirements), ("soft_skill", x.soft_skills), ("document", x.application_documents),
+        ("major", x.majors),
+        ("language", x.language_requirements),
+        ("certification", x.certifications),
+        ("legal", x.legal_requirements),
+        ("soft_skill", x.soft_skills),
+        ("document", x.application_documents),
     ):
         for val in values:
-            db.add(JobRequirement(vacancy_id=v.id, kind=kind, value=val[:2000], normalized_value=normalize_key(val)[:300]))
+            db.add(
+                JobRequirement(
+                    vacancy_id=v.id, kind=kind, value=val[:2000], normalized_value=normalize_key(val)[:300]
+                )
+            )
     if x.education_level:
         db.add(JobRequirement(vacancy_id=v.id, kind="education", value=x.education_level))
     if x.portfolio_required:
@@ -119,7 +186,16 @@ def apply_extraction(db: Session, v: JobVacancy, x: JobExtraction, *, version: R
         db.add(JobBenefit(vacancy_id=v.id, value=b[:2000], category=_benefit_category(b)))
     for raw in x.locations[:10]:
         loc = N.normalize_location(raw)
-        db.add(JobLocation(vacancy_id=v.id, raw=raw[:300], city=loc.city, region=loc.region, country=loc.country, is_remote=loc.is_remote))
+        db.add(
+            JobLocation(
+                vacancy_id=v.id,
+                raw=raw[:300],
+                city=loc.city,
+                region=loc.region,
+                country=loc.country,
+                is_remote=loc.is_remote,
+            )
+        )
     if x.work_arrangement == "REMOTE" and not x.locations:
         db.add(JobLocation(vacancy_id=v.id, raw="Remote", is_remote=True))
     for e in x.evidence:
@@ -142,9 +218,12 @@ def apply_extraction(db: Session, v: JobVacancy, x: JobExtraction, *, version: R
 def _benefit_category(text: str) -> str:
     t = text.lower()
     for cat, words in {
-        "insurance": ("insurance", "asuransi", "bpjs", "health"), "allowance": ("allowance", "uang saku", "tunjangan", "stipend"),
-        "meal_transport": ("meal", "makan", "transport", "transportasi"), "learning": ("training", "mentor", "learning", "pelatihan", "sertifikat", "certificate"),
-        "equipment": ("laptop", "equipment", "device"), "flexibility": ("remote", "flexible", "wfh", "hybrid"),
+        "insurance": ("insurance", "asuransi", "bpjs", "health"),
+        "allowance": ("allowance", "uang saku", "tunjangan", "stipend"),
+        "meal_transport": ("meal", "makan", "transport", "transportasi"),
+        "learning": ("training", "mentor", "learning", "pelatihan", "sertifikat", "certificate"),
+        "equipment": ("laptop", "equipment", "device"),
+        "flexibility": ("remote", "flexible", "wfh", "hybrid"),
     }.items():
         if any(w in t for w in words):
             return cat
@@ -182,22 +261,44 @@ def create_vacancy(
     db.flush()
     apply_extraction(db, v, x, version=version, source_text=source_text)
     link_source(db, v, source, document, version, primary=True, application_url=x.application_url)
-    db.add(VacancyStatusHistory(vacancy_id=v.id, from_status=None, to_status=status, reason=reason, actor=actor, rule="created"))
+    db.add(
+        VacancyStatusHistory(
+            vacancy_id=v.id, from_status=None, to_status=status, reason=reason, actor=actor, rule="created"
+        )
+    )
     lifecycle.apply_deadline_rule(db, v)
     v.freshness = lifecycle.compute_freshness(v)
     return v
 
 
-def link_source(db: Session, v: JobVacancy, source: Source, document: RawSourceDocument, version: RawSourceVersion | None, *, primary: bool = False, application_url: str | None = None) -> JobVacancySource:
+def link_source(
+    db: Session,
+    v: JobVacancy,
+    source: Source,
+    document: RawSourceDocument,
+    version: RawSourceVersion | None,
+    *,
+    primary: bool = False,
+    application_url: str | None = None,
+) -> JobVacancySource:
     link = db.execute(
-        select(JobVacancySource).where(JobVacancySource.vacancy_id == v.id, JobVacancySource.raw_document_id == document.id)
+        select(JobVacancySource).where(
+            JobVacancySource.vacancy_id == v.id, JobVacancySource.raw_document_id == document.id
+        )
     ).scalar_one_or_none()
     now = utcnow()
     if link is None:
         link = JobVacancySource(
-            vacancy_id=v.id, raw_document_id=document.id, source_id=source.id, source_url=document.original_url or document.canonical_url,
-            source_native_id=document.source_native_id, application_url=application_url, is_primary=primary,
-            raw_version_id=version.id if version else None, first_seen_at=now, last_seen_at=now,
+            vacancy_id=v.id,
+            raw_document_id=document.id,
+            source_id=source.id,
+            source_url=document.original_url or document.canonical_url,
+            source_native_id=document.source_native_id,
+            application_url=application_url,
+            is_primary=primary,
+            raw_version_id=version.id if version else None,
+            first_seen_at=now,
+            last_seen_at=now,
         )
         db.add(link)
     else:
@@ -211,11 +312,15 @@ def link_source(db: Session, v: JobVacancy, source: Source, document: RawSourceD
 
 
 def vacancy_for_document(db: Session, document_id: int) -> JobVacancy | None:
-    return db.execute(
-        select(JobVacancy)
-        .join(JobVacancySource, JobVacancySource.vacancy_id == JobVacancy.id)
-        .where(JobVacancySource.raw_document_id == document_id)
-    ).scalars().first()
+    return (
+        db.execute(
+            select(JobVacancy)
+            .join(JobVacancySource, JobVacancySource.vacancy_id == JobVacancy.id)
+            .where(JobVacancySource.raw_document_id == document_id)
+        )
+        .scalars()
+        .first()
+    )
 
 
 def canonical_vacancy(db: Session, v: JobVacancy) -> JobVacancy:
