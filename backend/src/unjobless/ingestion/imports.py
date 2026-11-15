@@ -48,12 +48,21 @@ from unjobless.sources.service import ensure_system_source, is_excluded
 log = get_logger(__name__)
 
 KNOWN_HOSTS = {
-    "boards.greenhouse.io": "Greenhouse job page", "job-boards.greenhouse.io": "Greenhouse job page",
-    "jobs.lever.co": "Lever job page", "jobs.ashbyhq.com": "Ashby job page",
-    "www.linkedin.com": "LinkedIn (login usually required)", "linkedin.com": "LinkedIn (login usually required)",
-    "www.instagram.com": "Instagram (login usually required)", "instagram.com": "Instagram (login usually required)",
-    "x.com": "X / Twitter", "twitter.com": "X / Twitter", "www.facebook.com": "Facebook (login usually required)",
-    "glints.com": "Glints", "www.jobstreet.co.id": "JobStreet", "id.jobstreet.com": "JobStreet", "www.kalibrr.com": "Kalibrr",
+    "boards.greenhouse.io": "Greenhouse job page",
+    "job-boards.greenhouse.io": "Greenhouse job page",
+    "jobs.lever.co": "Lever job page",
+    "jobs.ashbyhq.com": "Ashby job page",
+    "www.linkedin.com": "LinkedIn (login usually required)",
+    "linkedin.com": "LinkedIn (login usually required)",
+    "www.instagram.com": "Instagram (login usually required)",
+    "instagram.com": "Instagram (login usually required)",
+    "x.com": "X / Twitter",
+    "twitter.com": "X / Twitter",
+    "www.facebook.com": "Facebook (login usually required)",
+    "glints.com": "Glints",
+    "www.jobstreet.co.id": "JobStreet",
+    "id.jobstreet.com": "JobStreet",
+    "www.kalibrr.com": "Kalibrr",
 }
 PASTE_FALLBACK = "Open the page in your browser, copy the post text, and use “Paste content” instead."
 
@@ -88,25 +97,47 @@ def check_lines(db: Session, text: str) -> list[LineCheck]:
         canon = canonicalize_url(s)
         host = host_of(s) or ""
         if is_excluded(db, s):
-            out.append(LineCheck(i, raw, False, url=s, domain=host, error="This domain is on your exclusion list."))
+            out.append(
+                LineCheck(i, raw, False, url=s, domain=host, error="This domain is on your exclusion list.")
+            )
             continue
         if canon in seen:
-            out.append(LineCheck(i, raw, False, url=s, domain=host, error="Duplicate in this batch.", duplicate_of=seen[canon]))
+            out.append(
+                LineCheck(
+                    i,
+                    raw,
+                    False,
+                    url=s,
+                    domain=host,
+                    error="Duplicate in this batch.",
+                    duplicate_of=seen[canon],
+                )
+            )
             continue
         seen[canon] = i
-        out.append(LineCheck(i, raw, True, url=s, domain=host, detected=KNOWN_HOSTS.get(host) or _source_for_host(db, host)))
+        out.append(
+            LineCheck(
+                i, raw, True, url=s, domain=host, detected=KNOWN_HOSTS.get(host) or _source_for_host(db, host)
+            )
+        )
     return out
 
 
 def _source_for_host(db: Session, host: str) -> str | None:
-    src = db.execute(select(Source).where(Source.domain.is_not(None), Source.is_system.is_(False))).scalars().all()
+    src = (
+        db.execute(select(Source).where(Source.domain.is_not(None), Source.is_system.is_(False)))
+        .scalars()
+        .all()
+    )
     for s in src:
         if s.domain and (host == s.domain or host.endswith("." + s.domain)):
             return f"Registered source: {s.name}"
     return None
 
 
-def create_url_batch(db: Session, text: str, *, note: str | None = None, category_hint: str | None = None) -> tuple[ImportBatch, list[LineCheck]]:
+def create_url_batch(
+    db: Session, text: str, *, note: str | None = None, category_hint: str | None = None
+) -> tuple[ImportBatch, list[LineCheck]]:
     checks = check_lines(db, text)
     valid = [c for c in checks if c.ok]
     if not valid:
@@ -114,24 +145,43 @@ def create_url_batch(db: Session, text: str, *, note: str | None = None, categor
     limit = get_settings().max_urls_per_batch
     if len(valid) > limit:
         raise ValidationFailed(f"A batch can contain at most {limit} URLs.")
-    batch = ImportBatch(kind=ImportKind.URL, status=ImportBatchStatus.PENDING, note=note, category_hint=category_hint, item_count=len(valid))
+    batch = ImportBatch(
+        kind=ImportKind.URL,
+        status=ImportBatchStatus.PENDING,
+        note=note,
+        category_hint=category_hint,
+        item_count=len(valid),
+    )
     db.add(batch)
     db.flush()
     for pos, c in enumerate(valid):
-        db.add(ImportItem(
-            batch_id=batch.id, position=pos, input_url=c.url, detected_domain=c.domain, detected_connector=c.detected,
-            status=ImportItemStatus.QUEUED, idempotency_key=hashlib.sha256(canonicalize_url(c.url or "").encode()).hexdigest()[:40],
-        ))
+        db.add(
+            ImportItem(
+                batch_id=batch.id,
+                position=pos,
+                input_url=c.url,
+                detected_domain=c.domain,
+                detected_connector=c.detected,
+                status=ImportItemStatus.QUEUED,
+                idempotency_key=hashlib.sha256(canonicalize_url(c.url or "").encode()).hexdigest()[:40],
+            )
+        )
     db.flush()
     return batch, checks
 
 
 def enqueue_batch(db: Session, batch: ImportBatch) -> None:
-    for item in db.execute(select(ImportItem).where(ImportItem.batch_id == batch.id, ImportItem.status == ImportItemStatus.QUEUED)).scalars():
+    for item in db.execute(
+        select(ImportItem).where(
+            ImportItem.batch_id == batch.id, ImportItem.status == ImportItemStatus.QUEUED
+        )
+    ).scalars():
         defer("process_import_item", queueing_lock=f"import-{item.id}", item_id=item.id)
 
 
-def _set(item: ImportItem, status: ImportItemStatus, *, reason: str | None = None, code: str | None = None) -> None:
+def _set(
+    item: ImportItem, status: ImportItemStatus, *, reason: str | None = None, code: str | None = None
+) -> None:
     IMPORT_ITEM.check(item.status, status)
     item.status = status
     if status in TERMINAL_IMPORT_ERR:
@@ -148,7 +198,11 @@ def refresh_batch_status(db: Session, batch_id: int) -> None:
     if not statuses:
         return
     if all(s in TERMINAL_IMPORT_OK | TERMINAL_IMPORT_ERR for s in statuses):
-        batch.status = ImportBatchStatus.COMPLETED_WITH_ERRORS if any(s in TERMINAL_IMPORT_ERR for s in statuses) else ImportBatchStatus.COMPLETED
+        batch.status = (
+            ImportBatchStatus.COMPLETED_WITH_ERRORS
+            if any(s in TERMINAL_IMPORT_ERR for s in statuses)
+            else ImportBatchStatus.COMPLETED
+        )
     else:
         batch.status = ImportBatchStatus.PROCESSING
 
@@ -183,42 +237,108 @@ def _fetch_and_store(db: Session, item: ImportItem, f: SafeFetcher) -> None:
     url = item.input_url or ""
     host = host_of(url)
     if is_excluded(db, url):
-        return _set(item, ImportItemStatus.BLOCKED, reason="This domain is on your exclusion list.", code="excluded")
+        return _set(
+            item, ImportItemStatus.BLOCKED, reason="This domain is on your exclusion list.", code="excluded"
+        )
     try:
         if not robots_allows(db, f, url):
             log_fetch(db, "blocked", host, "robots_disallow")
-            return _set(item, ImportItemStatus.BLOCKED, reason=f"The site's robots.txt does not allow automated fetching of this page. {PASTE_FALLBACK}", code="robots_disallow")
-        res = f.get(url, content_types=("text/html", "application/xhtml+xml", "text/plain", "application/json", "application/ld+json"))
+            return _set(
+                item,
+                ImportItemStatus.BLOCKED,
+                reason=f"The site's robots.txt does not allow automated fetching of this page. {PASTE_FALLBACK}",
+                code="robots_disallow",
+            )
+        res = f.get(
+            url,
+            content_types=(
+                "text/html",
+                "application/xhtml+xml",
+                "text/plain",
+                "application/json",
+                "application/ld+json",
+            ),
+        )
     except BlockedURL as e:
         log_fetch(db, "blocked", host, e.code)
-        return _set(item, ImportItemStatus.BLOCKED, reason=f"{e.message} {PASTE_FALLBACK if e.code in ('content_type_not_allowed','too_large') else ''}".strip(), code=e.code)
+        return _set(
+            item,
+            ImportItemStatus.BLOCKED,
+            reason=f"{e.message} {PASTE_FALLBACK if e.code in ('content_type_not_allowed', 'too_large') else ''}".strip(),
+            code=e.code,
+        )
     except FetchFailed as e:
         log_fetch(db, "failed", host, e.code)
         return _set(item, ImportItemStatus.UNAVAILABLE, reason=f"{e.message} {PASTE_FALLBACK}", code=e.code)
     if res.status_code in (401, 402, 403, 407, 451):
-        return _set(item, ImportItemStatus.UNAVAILABLE, reason=f"The page requires sign-in or blocks automated access (HTTP {res.status_code}). Unjobless does not bypass this. {PASTE_FALLBACK}", code="access_restricted")
+        return _set(
+            item,
+            ImportItemStatus.UNAVAILABLE,
+            reason=f"The page requires sign-in or blocks automated access (HTTP {res.status_code}). Unjobless does not bypass this. {PASTE_FALLBACK}",
+            code="access_restricted",
+        )
     if res.status_code == 404 or res.status_code == 410:
-        return _set(item, ImportItemStatus.UNAVAILABLE, reason="The page was not found; the posting may have been removed.", code="not_found")
+        return _set(
+            item,
+            ImportItemStatus.UNAVAILABLE,
+            reason="The page was not found; the posting may have been removed.",
+            code="not_found",
+        )
     if res.status_code == 429:
-        return _set(item, ImportItemStatus.UNAVAILABLE, reason="The site is rate limiting requests. Retry later.", code="rate_limited")
+        return _set(
+            item,
+            ImportItemStatus.UNAVAILABLE,
+            reason="The site is rate limiting requests. Retry later.",
+            code="rate_limited",
+        )
     if res.status_code >= 400:
-        return _set(item, ImportItemStatus.UNAVAILABLE, reason=f"The site returned HTTP {res.status_code}.", code="http_error")
+        return _set(
+            item,
+            ImportItemStatus.UNAVAILABLE,
+            reason=f"The site returned HTTP {res.status_code}.",
+            code="http_error",
+        )
     html = res.text
     is_html = res.content_type in ("text/html", "application/xhtml+xml")
     text = extract_main_text(html) if is_html else html
     if is_html and looks_like_access_wall(html, text):
-        return _set(item, ImportItemStatus.UNAVAILABLE, reason=f"The page shows a login or CAPTCHA wall. {PASTE_FALLBACK}", code="access_wall")
+        return _set(
+            item,
+            ImportItemStatus.UNAVAILABLE,
+            reason=f"The page shows a login or CAPTCHA wall. {PASTE_FALLBACK}",
+            code="access_wall",
+        )
     meta = page_meta(html) if is_html else {}
     postings = find_jobpostings(html) if is_html else []
-    canonical = meta.get("canonical") if meta.get("canonical", "") and str(meta.get("canonical")).startswith("http") else res.url
+    canonical = (
+        meta.get("canonical")
+        if meta.get("canonical", "") and str(meta.get("canonical")).startswith("http")
+        else res.url
+    )
     source = ensure_system_source(db, "user_url_import")
-    stored = store_item(db, source, CollectedItem(
-        native_id=None, url=res.url, canonical_url=canonicalize_url(canonical), content_type=res.content_type,
-        raw_text=html, extracted_text=text, title=(postings[0].get("title") if postings else None) or meta.get("og:title") or meta.get("title"),
-        application_url=postings[0].get("application_url") if postings else None,
-        metadata={**{k: v for k, v in meta.items() if k != "robots"}, "requested_url": item.input_url, "redirects": res.redirects, "truncated": res.truncated},
-        structured=postings or None,
-    ))
+    stored = store_item(
+        db,
+        source,
+        CollectedItem(
+            native_id=None,
+            url=res.url,
+            canonical_url=canonicalize_url(canonical),
+            content_type=res.content_type,
+            raw_text=html,
+            extracted_text=text,
+            title=(postings[0].get("title") if postings else None)
+            or meta.get("og:title")
+            or meta.get("title"),
+            application_url=postings[0].get("application_url") if postings else None,
+            metadata={
+                **{k: v for k, v in meta.items() if k != "robots"},
+                "requested_url": item.input_url,
+                "redirects": res.redirects,
+                "truncated": res.truncated,
+            },
+            structured=postings or None,
+        ),
+    )
     item.raw_version_id = stored.version.id
     _set(item, ImportItemStatus.EXTRACTED)
     if stored.outcome == RunItemOutcome.UNCHANGED:
@@ -260,30 +380,62 @@ def create_paste_batch(db: Session, records: list[PasteInput], *, note: str | No
                 validate_url(r.source_url, resolve=False)
             except BlockedURL as e:
                 raise ValidationFailed(f"Source URL: {e.message}") from e
-    batch = ImportBatch(kind=ImportKind.PASTE, status=ImportBatchStatus.PENDING, note=note, item_count=len(records))
+    batch = ImportBatch(
+        kind=ImportKind.PASTE, status=ImportBatchStatus.PENDING, note=note, item_count=len(records)
+    )
     db.add(batch)
     db.flush()
     source = ensure_system_source(db, "user_paste")
     for pos, r in enumerate(records):
         digest = hashlib.sha256(r.text.encode()).hexdigest()
-        stored = store_item(db, source, CollectedItem(
-            native_id=f"paste:{digest[:32]}",
-            url=r.source_url,
-            content_type="text/plain",
-            raw_text=r.text,  # preserved exactly
-            title=None,
-            published_at=r.published_at,
-            metadata={k: v for k, v in {
-                "platform": r.platform, "author_label": r.author_label, "content_type_hint": r.content_type_hint,
-                "notes": r.notes, "source_url": r.source_url,
-            }.items() if v},
-        ))
+        stored = store_item(
+            db,
+            source,
+            CollectedItem(
+                native_id=f"paste:{digest[:32]}",
+                url=r.source_url,
+                content_type="text/plain",
+                raw_text=r.text,  # preserved exactly
+                title=None,
+                published_at=r.published_at,
+                metadata={
+                    k: v
+                    for k, v in {
+                        "platform": r.platform,
+                        "author_label": r.author_label,
+                        "content_type_hint": r.content_type_hint,
+                        "notes": r.notes,
+                        "source_url": r.source_url,
+                    }.items()
+                    if v
+                },
+            ),
+        )
         if r.extra_text and r.extra_text.strip():
-            db.add(ContentTranscription(version_id=stored.version.id, kind=TranscriptionKind.USER_PROVIDED, origin=TextOrigin.USER_PROVIDED, text=r.extra_text[:maxc], engine="owner"))
+            db.add(
+                ContentTranscription(
+                    version_id=stored.version.id,
+                    kind=TranscriptionKind.USER_PROVIDED,
+                    origin=TextOrigin.USER_PROVIDED,
+                    text=r.extra_text[:maxc],
+                    engine="owner",
+                )
+            )
         item = ImportItem(
-            batch_id=batch.id, position=pos, input_url=None, detected_domain=host_of(r.source_url) if r.source_url else None,
-            detected_connector=r.platform, paste_meta={"platform": r.platform, "author_label": r.author_label, "source_url": r.source_url, "notes": r.notes},
-            status=ImportItemStatus.QUEUED, raw_version_id=stored.version.id, idempotency_key=digest[:40],
+            batch_id=batch.id,
+            position=pos,
+            input_url=None,
+            detected_domain=host_of(r.source_url) if r.source_url else None,
+            detected_connector=r.platform,
+            paste_meta={
+                "platform": r.platform,
+                "author_label": r.author_label,
+                "source_url": r.source_url,
+                "notes": r.notes,
+            },
+            status=ImportItemStatus.QUEUED,
+            raw_version_id=stored.version.id,
+            idempotency_key=digest[:40],
         )
         db.add(item)
         db.flush()
@@ -309,9 +461,17 @@ def _process_paste_item(db: Session, item: ImportItem, *, use_ai: bool) -> None:
 
 
 def enqueue_paste_batch(db: Session, batch: ImportBatch) -> None:
-    for item in db.execute(select(ImportItem).where(ImportItem.batch_id == batch.id, ImportItem.status == ImportItemStatus.EXTRACTED)).scalars():
+    for item in db.execute(
+        select(ImportItem).where(
+            ImportItem.batch_id == batch.id, ImportItem.status == ImportItemStatus.EXTRACTED
+        )
+    ).scalars():
         if item.raw_version_id:
-            defer("process_version", queueing_lock=f"version-{item.raw_version_id}", version_id=item.raw_version_id)
+            defer(
+                "process_version",
+                queueing_lock=f"version-{item.raw_version_id}",
+                version_id=item.raw_version_id,
+            )
 
 
 def retry_item(db: Session, item: ImportItem, *, corrected_url: str | None = None) -> ImportItem:
@@ -330,10 +490,21 @@ def retry_item(db: Session, item: ImportItem, *, corrected_url: str | None = Non
 
 
 def batch_summary(db: Session, batch: ImportBatch) -> dict[str, Any]:
-    counts = dict(db.execute(select(ImportItem.status, func.count()).where(ImportItem.batch_id == batch.id).group_by(ImportItem.status)).all())
+    counts = dict(
+        db.execute(
+            select(ImportItem.status, func.count())
+            .where(ImportItem.batch_id == batch.id)
+            .group_by(ImportItem.status)
+        ).all()
+    )
     return {
-        "id": batch.id, "kind": batch.kind.value, "status": batch.status.value, "note": batch.note, "category_hint": batch.category_hint,
-        "item_count": batch.item_count, "created_at": batch.created_at.isoformat(),
+        "id": batch.id,
+        "kind": batch.kind.value,
+        "status": batch.status.value,
+        "note": batch.note,
+        "category_hint": batch.category_hint,
+        "item_count": batch.item_count,
+        "created_at": batch.created_at.isoformat(),
         "counts": {k.value: v for k, v in counts.items()},
     }
 
