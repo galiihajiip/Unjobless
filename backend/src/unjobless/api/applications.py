@@ -11,7 +11,14 @@ from sqlalchemy import or_, select
 from unjobless.api.deps import DB
 from unjobless.applications import export, tailoring, tracker
 from unjobless.core.errors import NotFound
-from unjobless.db.models import ApplicationRecord, ApplicationStatusHistory, CoverLetter, ExportFile, JobVacancy, TailoredResume
+from unjobless.db.models import (
+    ApplicationRecord,
+    ApplicationStatusHistory,
+    CoverLetter,
+    ExportFile,
+    JobVacancy,
+    TailoredResume,
+)
 from unjobless.domain.enums import ApplicationStatus
 from unjobless.ingestion.filestore import get_filestore
 
