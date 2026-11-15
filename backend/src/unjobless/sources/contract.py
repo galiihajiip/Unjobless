@@ -7,6 +7,8 @@ register the class with `@register` and create a Source row pointing at its `typ
 
 from __future__ import annotations
 
+import builtins
+
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -37,7 +39,7 @@ class ConnectorInfo:
     description: str
     documentation_url: str | None
     terms_url: str | None
-    config_model: type[BaseModel] = EmptyConfig
+    config_model: builtins.type[BaseModel] = EmptyConfig
     auth_required: bool = False
     default_schedule_seconds: int | None = 3600
     default_rate_limit_per_minute: int = 30
