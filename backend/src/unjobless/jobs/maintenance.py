@@ -76,3 +76,17 @@ def daily() -> None:
             log.warning(
                 "daily_step_failed", step=getattr(step, "__name__", "?"), error_type=type(exc).__name__
             )
+
+
+def lifecycle_recheck() -> None:
+    from unjobless.intelligence.lifecycle import recheck_all
+
+    with session_scope() as db:
+        log.info("lifecycle_recheck", changed=recheck_all(db))
+
+
+def trends_refresh() -> None:
+    from unjobless.intelligence.sentiment import refresh_trends
+
+    with session_scope() as db:
+        refresh_trends(db)
