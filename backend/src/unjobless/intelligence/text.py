@@ -6,7 +6,7 @@ import html
 import re
 import unicodedata
 
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
 _WS = re.compile(r"[ \t ]+")
 _NL = re.compile(r"\n{3,}")
