@@ -19,7 +19,7 @@ from unjobless.intelligence import normalize as N
 
 DEFAULT_LEXICON: dict[str, list[str]] = {
     "hiring": [
-        r"we('| a)?re hiring", r"\bis hiring\b", r"\bnow hiring\b", r"\bhiring\b", r"\bkami (sedang )?(membuka|mencari|merekrut)\b",
+        r"we('| a)?re hiring", r"\bis hiring\b", r"\bnow hiring\b", r"\bhiring\b(?! freeze)", r"\bkami (sedang )?(membuka|mencari|merekrut)\b",
         r"\b(dibuka|membuka) (lowongan|kesempatan|pendaftaran)\b", r"\blowongan( kerja| magang)?\b", r"\bloker\b", r"\blowker\b",
         r"\bopen recruitment\b", r"\boprec\b", r"\bjoin our team\b", r"\bjoin us\b", r"\bopen position", r"\bjob opening",
         r"\bvacanc(y|ies)\b", r"\bapply now\b", r"\bdaftar sekarang\b", r"\bsegera daftar", r"\bwe are looking for\b",
@@ -191,10 +191,11 @@ def classify(text: str, *, title: str | None = None, structured: bool = False, t
         return result(C.SCHOLARSHIP_OR_COMPETITION, ST.CAREER_EVENT, 0.7, "Scholarship or competition announcement.", V.POTENTIAL_LEAD)
     if n["program"] and not (explicit and structure >= 2):
         return result(C.CAREER_PROGRAM, ST.CAREER_EVENT, 0.65, "Career program, training or event — not a job opening.", V.POTENTIAL_LEAD)
-    if n["trend"] and not explicit:
+    if n["trend"] and not (structure >= 1 and apply_path):
         return result(C.CAREER_TREND, ST.NOT_AN_OPPORTUNITY, 0.65, "Discusses the job market or hiring trends.", V.REJECTED_AS_IRRELEVANT)
 
-    if explicit or structured:
+    posting_shape = structure >= 2 and apply_path and role is not None
+    if explicit or structured or posting_shape:
         if n["campaign"]:
             secondary.append(C.RECRUITMENT_CAMPAIGN)
         complete = (role is not None or structured) and (apply_path or structured) and (structure >= 1 or structured)
