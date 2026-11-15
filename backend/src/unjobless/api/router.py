@@ -13,6 +13,11 @@ from unjobless.api.deps import require_owner
 PRIVATE_MODULES: list[str] = [
     "unjobless.api.sources",
     "unjobless.api.ai",
+    "unjobless.api.imports",
+    "unjobless.api.vacancies",
+    "unjobless.api.profile",
+    "unjobless.api.compare",
+    "unjobless.api.applications",
 ]
 
 
