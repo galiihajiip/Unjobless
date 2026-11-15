@@ -8,7 +8,6 @@ register the class with `@register` and create a Source row pointing at its `typ
 from __future__ import annotations
 
 import builtins
-
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import datetime
