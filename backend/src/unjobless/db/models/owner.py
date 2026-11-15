@@ -27,7 +27,9 @@ class OwnerAccount(Base, Timestamps):
 class OwnerSession(Base):
     __tablename__ = "owner_sessions"
     id: Mapped[int] = pk()
-    owner_id: Mapped[int] = mapped_column(ForeignKey("owner_account.id", ondelete="CASCADE"), nullable=False, index=True)
+    owner_id: Mapped[int] = mapped_column(
+        ForeignKey("owner_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     csrf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
