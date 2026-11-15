@@ -226,7 +226,7 @@ def integrity_check() -> dict[str, Any]:
                 )
             ).scalar()
         try:
-            decrypt_secret(bytes(blob))
+            decrypt_secret(bytes(blob or b""))
             keys_ok = True
         except Exception:
             keys_ok = False
