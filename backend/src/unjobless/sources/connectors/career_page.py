@@ -173,11 +173,8 @@ class CareerPageConnector(Connector):
             tree = HTMLParser(html)
             nodes = tree.css(cfg.job_link_selector) if cfg.job_link_selector else tree.css("a[href]")
             for a in nodes:
-                href = (
-                    a.attributes.get("href")
-                    if a.tag == "a"
-                    else (a.css_first("a[href]").attributes.get("href") if a.css_first("a[href]") else None)
-                )
+                inner = a.css_first("a[href]") if a.tag != "a" else None
+                href = a.attributes.get("href") if a.tag == "a" else (inner.attributes.get("href") if inner is not None else None)
                 if not href or href.startswith(("mailto:", "tel:", "javascript:", "#")):
                     continue
                 u = urljoin(res.url, href)
