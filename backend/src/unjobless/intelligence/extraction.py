@@ -22,9 +22,21 @@ from unjobless.intelligence.text import find_span, guess_language
 EXTRACTOR_VERSION = "1.0"
 
 LIST_FIELDS = [
-    "locations", "majors", "required_skills", "preferred_skills", "tools", "language_requirements", "certifications",
-    "legal_requirements", "soft_skills", "application_documents", "selection_stages", "responsibilities", "deliverables",
-    "benefits", "remote_eligible_countries",
+    "locations",
+    "majors",
+    "required_skills",
+    "preferred_skills",
+    "tools",
+    "language_requirements",
+    "certifications",
+    "legal_requirements",
+    "soft_skills",
+    "application_documents",
+    "selection_stages",
+    "responsibilities",
+    "deliverables",
+    "benefits",
+    "remote_eligible_countries",
 ]
 
 
@@ -32,7 +44,13 @@ def empty_extraction() -> dict[str, Any]:
     base: dict[str, Any] = {f: None for f in JobExtraction.model_fields}
     for f in LIST_FIELDS + ["evidence", "warnings"]:
         base[f] = []
-    base.update(is_job_posting=False, work_arrangement="UNKNOWN", employment_type="UNKNOWN", seniority="UNKNOWN", pay_period="UNKNOWN")
+    base.update(
+        is_job_posting=False,
+        work_arrangement="UNKNOWN",
+        employment_type="UNKNOWN",
+        seniority="UNKNOWN",
+        pay_period="UNKNOWN",
+    )
     return base
 
 
@@ -53,7 +71,9 @@ def _sections(text: str) -> dict[str, list[tuple[str, int]]]:
     heads = list(HEAD_RE.finditer(text))
     # Also treat "Requirements: a, b" inline heads
     for i, h in enumerate(heads):
-        kind = next((k for k, pat in SECTION_HEADS.items() if re.fullmatch(pat, h.group(1).strip(), re.I)), None)
+        kind = next(
+            (k for k, pat in SECTION_HEADS.items() if re.fullmatch(pat, h.group(1).strip(), re.I)), None
+        )
         if not kind:
             continue
         end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
@@ -65,7 +85,9 @@ def _sections(text: str) -> dict[str, list[tuple[str, int]]]:
             offset += len(line) + 1
     for kind, pat in SECTION_HEADS.items():
         for m in re.finditer(rf"\b{pat}\s*:\s*([^\n]{{3,400}})", text, re.I):
-            items = [x.strip() for x in re.split(r"[;,]|\s-\s", m.group(m.lastindex or 1)) if len(x.strip()) > 2]
+            items = [
+                x.strip() for x in re.split(r"[;,]|\s-\s", m.group(m.lastindex or 1)) if len(x.strip()) > 2
+            ]
             for it in items[:12]:
                 out.setdefault(kind, []).append((it, m.start()))
     return out
@@ -100,7 +122,12 @@ def rules_extract(text: str, *, title: str | None = None, today: date | None = N
         e["seniority"] = "INTERN"
     sal = N.parse_salary(full)
     if sal:
-        e.update(salary_min=sal.min, salary_max=sal.max, salary_currency=sal.currency, pay_period=sal.period or "UNKNOWN")
+        e.update(
+            salary_min=sal.min,
+            salary_max=sal.max,
+            salary_currency=sal.currency,
+            pay_period=sal.period or "UNKNOWN",
+        )
         add("salary", sal.excerpt, 0.85)
         if sal.period is None:
             e["warnings"].append("Salary period not stated.")
@@ -123,7 +150,10 @@ def rules_extract(text: str, *, title: str | None = None, today: date | None = N
     for raw, _s, _e in locs:
         add("locations", raw, 0.75)
     urls = [u.rstrip(".,;") for u in N.URL_RE.findall(full)]
-    apply_url = next((u for u in urls if re.search(r"(apply|career|karir|job|lowongan|recruit|form|daftar)", u, re.I)), urls[0] if urls else None)
+    apply_url = next(
+        (u for u in urls if re.search(r"(apply|career|karir|job|lowongan|recruit|form|daftar)", u, re.I)),
+        urls[0] if urls else None,
+    )
     if apply_url:
         e["application_url"] = apply_url
         add("application_url", apply_url, 0.8)
@@ -154,7 +184,9 @@ def rules_extract(text: str, *, title: str | None = None, today: date | None = N
             add("internship_duration_months", m2.group(0), 0.75)
     m2 = N.EDU_RE.search(full)
     if m2:
-        e["education_level"] = N.EDU_MAP.get(m2.group(1).lower().rstrip("'s"), N.EDU_MAP.get(m2.group(1).lower()))
+        e["education_level"] = N.EDU_MAP.get(
+            m2.group(1).lower().rstrip("'s"), N.EDU_MAP.get(m2.group(1).lower())
+        )
         add("education_level", m2.group(0), 0.7)
 
     secs = _sections(full)
@@ -181,7 +213,11 @@ def rules_extract(text: str, *, title: str | None = None, today: date | None = N
     e["required_skills"], e["preferred_skills"] = required[:30], preferred[:20]
     if not req_lines and required:
         e["warnings"].append("Skills found in the text but no requirements section; treat as indicative.")
-    soft = [s for s in required if s in {"Communication", "Leadership", "Teamwork", "Problem Solving", "Public Speaking"}]
+    soft = [
+        s
+        for s in required
+        if s in {"Communication", "Leadership", "Teamwork", "Problem Solving", "Public Speaking"}
+    ]
     e["soft_skills"] = soft
     e["required_skills"] = [s for s in e["required_skills"] if s not in soft]
     langs = [s for s in e["required_skills"] if s in {"English", "Mandarin"}]
@@ -214,7 +250,14 @@ def from_structured(s: dict[str, Any]) -> dict[str, Any]:
         if value in (None, "", []):
             return
         e[field] = value
-        ev.append({"field": field, "excerpt": f"[{prov}] {str(excerpt if excerpt is not None else value)[:300]}", "origin": "EXPLICIT", "confidence": 0.95})
+        ev.append(
+            {
+                "field": field,
+                "excerpt": f"[{prov}] {str(excerpt if excerpt is not None else value)[:300]}",
+                "origin": "EXPLICIT",
+                "confidence": 0.95,
+            }
+        )
 
     put("title", s.get("title"))
     put("company", s.get("company"))
@@ -259,7 +302,9 @@ def merge(primary: dict[str, Any], secondary: dict[str, Any]) -> dict[str, Any]:
         if unknown and sv not in (None, [], "UNKNOWN"):
             out[f] = sv
     present = {(x["field"], x["excerpt"]) for x in out.get("evidence", [])}
-    out["evidence"] = list(out.get("evidence", [])) + [x for x in secondary.get("evidence", []) if (x["field"], x["excerpt"]) not in present]
+    out["evidence"] = list(out.get("evidence", [])) + [
+        x for x in secondary.get("evidence", []) if (x["field"], x["excerpt"]) not in present
+    ]
     out["warnings"] = _dedupe(list(out.get("warnings", [])) + list(secondary.get("warnings", [])))
     return out
 
@@ -274,14 +319,18 @@ def verify_ai_evidence(ai: dict[str, Any], source_text: str) -> dict[str, Any]:
             good.append(item)
             supported.add(item["field"])
         else:
-            good.append({**item, "origin": "INFERRED", "confidence": min(0.3, float(item.get("confidence", 0.3)))})
+            good.append(
+                {**item, "origin": "INFERRED", "confidence": min(0.3, float(item.get("confidence", 0.3)))}
+            )
     out["evidence"] = good
     # High-risk facts must be evidenced verbatim or they are dropped (never fabricate).
     for f in ("application_deadline", "salary_min", "salary_max", "application_url", "is_paid", "min_gpa"):
         field_key = "salary" if f.startswith("salary") else f
         if out.get(f) is not None and field_key not in supported and f not in supported:
             out[f] = None
-            out.setdefault("warnings", []).append(f"Dropped AI value for {f}: no verbatim evidence in the source.")
+            out.setdefault("warnings", []).append(
+                f"Dropped AI value for {f}: no verbatim evidence in the source."
+            )
     url = out.get("application_url")
     if url and url not in source_text:
         out["application_url"] = None
@@ -312,17 +361,38 @@ def extract(
     result = merge(result, rules)
     method.append("rules")
     if use_ai and db is not None:
-        from unjobless.ai.gateway import AIBudgetExceeded, AINotConfigured, AITaskFailed, AIUnavailable, ai_available, run_task
+        from unjobless.ai.gateway import (
+            AIBudgetExceeded,
+            AINotConfigured,
+            AITaskFailed,
+            AIUnavailable,
+            ai_available,
+            run_task,
+        )
 
         if ai_available(db, "job_extraction"):
             try:
-                res = run_task(db, "job_extraction", {"title_hint": title, "text_untrusted": desc[:40000]}, input_ref=input_ref)
+                res = run_task(
+                    db,
+                    "job_extraction",
+                    {"title_hint": title, "text_untrusted": desc[:40000]},
+                    input_ref=input_ref,
+                )
                 ai = verify_ai_evidence(res.output.model_dump(mode="json"), desc)
                 result = merge(result, ai)
                 method.append(f"ai:{res.run.model}")
             except (AINotConfigured, AIUnavailable, AIBudgetExceeded, AITaskFailed):
-                result["warnings"] = [*result["warnings"], "AI extraction unavailable; rule-based extraction only."]
-    result["is_job_posting"] = bool(result.get("is_job_posting") or (result.get("title") and (result.get("application_url") or result.get("application_email") or structured)))
+                result["warnings"] = [
+                    *result["warnings"],
+                    "AI extraction unavailable; rule-based extraction only.",
+                ]
+    result["is_job_posting"] = bool(
+        result.get("is_job_posting")
+        or (
+            result.get("title")
+            and (result.get("application_url") or result.get("application_email") or structured)
+        )
+    )
     result["evidence"] = [Evidence(**x).model_dump() for x in result["evidence"] if x.get("excerpt")]
     return JobExtraction.model_validate(result), "+".join(method)
 
@@ -330,10 +400,17 @@ def extract(
 def data_confidence(x: JobExtraction) -> float:
     """Completeness/reliability of the record (not a quality judgement of the job)."""
     checks = [
-        x.title is not None, x.company is not None, bool(x.locations) or x.work_arrangement == "REMOTE",
-        x.employment_type != "UNKNOWN", x.application_url is not None or x.application_email is not None,
-        bool(x.responsibilities), bool(x.required_skills) or x.education_level is not None,
-        x.application_deadline is not None, x.salary_min is not None or x.is_paid is not None,
+        x.title is not None,
+        x.company is not None,
+        bool(x.locations) or x.work_arrangement == "REMOTE",
+        x.employment_type != "UNKNOWN",
+        x.application_url is not None or x.application_email is not None,
+        bool(x.responsibilities),
+        bool(x.required_skills) or x.education_level is not None,
+        x.application_deadline is not None,
+        x.salary_min is not None or x.is_paid is not None,
     ]
-    explicit_share = (sum(1 for e in x.evidence if e.origin == "EXPLICIT") / len(x.evidence)) if x.evidence else 0.0
+    explicit_share = (
+        (sum(1 for e in x.evidence if e.origin == "EXPLICIT") / len(x.evidence)) if x.evidence else 0.0
+    )
     return round(0.75 * (sum(checks) / len(checks)) + 0.25 * explicit_share, 3)
