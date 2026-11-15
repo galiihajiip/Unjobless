@@ -93,7 +93,9 @@ def expected_setup_token() -> str | None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(secrets.token_urlsafe(24))
         path.chmod(0o600)
-        log.warning("bootstrap_token_created", path=str(path), hint="read it with: docker compose exec api cat <path>")
+        log.warning(
+            "bootstrap_token_created", path=str(path), hint="read it with: docker compose exec api cat <path>"
+        )
     return path.read_text().strip()
 
 
@@ -112,9 +114,13 @@ def _start_session(db: DB, response: Response, request: Request, owner: OwnerAcc
     )
     max_age = settings.session_ttl_hours * 3600
     secure = settings.is_production
-    response.set_cookie(SESSION_COOKIE, token, max_age=max_age, httponly=True, secure=secure, samesite="lax", path="/")
+    response.set_cookie(
+        SESSION_COOKIE, token, max_age=max_age, httponly=True, secure=secure, samesite="lax", path="/"
+    )
     # Readable by the SPA so it can echo it in the X-CSRF-Token header.
-    response.set_cookie(CSRF_COOKIE, csrf, max_age=max_age, httponly=False, secure=secure, samesite="strict", path="/")
+    response.set_cookie(
+        CSRF_COOKIE, csrf, max_age=max_age, httponly=False, secure=secure, samesite="strict", path="/"
+    )
 
 
 def _clear_cookies(response: Response) -> None:
@@ -124,7 +130,11 @@ def _clear_cookies(response: Response) -> None:
 
 def _check_throttle(db: DB, ip: str | None) -> None:
     since = utcnow() - THROTTLE_WINDOW
-    q = select(func.count()).select_from(LoginAttempt).where(LoginAttempt.success.is_(False), LoginAttempt.at > since)
+    q = (
+        select(func.count())
+        .select_from(LoginAttempt)
+        .where(LoginAttempt.success.is_(False), LoginAttempt.at > since)
+    )
     if db.execute(q).scalar_one() >= MAX_FAILURES_GLOBAL:
         raise TooManyRequests("Too many failed sign-in attempts. Try again later.")
     if ip and db.execute(q.where(LoginAttempt.ip == ip)).scalar_one() >= MAX_FAILURES_PER_IP:
@@ -146,7 +156,9 @@ def state(request: Request, db: DB) -> AuthStateOut:
 @router.post("/bootstrap", status_code=201)
 def bootstrap(body: BootstrapIn, request: Request, response: Response, db: DB) -> dict[str, str]:
     if db.execute(select(OwnerAccount)).scalar_one_or_none() is not None:
-        raise Conflict("This instance already has an owner. Bootstrap can only run once.", code="already_bootstrapped")
+        raise Conflict(
+            "This instance already has an owner. Bootstrap can only run once.", code="already_bootstrapped"
+        )
     _check_throttle(db, client_ip(request))
     expected = expected_setup_token()
     if expected is not None and not safe_equals(body.setup_token or "", expected):
@@ -230,7 +242,9 @@ def revoke_session(session_id: int, owner: Owner, db: DB) -> dict[str, str]:
 
 
 @router.post("/password")
-def change_password(body: PasswordChangeIn, owner: Owner, request: Request, response: Response, db: DB) -> dict[str, str]:
+def change_password(
+    body: PasswordChangeIn, owner: Owner, request: Request, response: Response, db: DB
+) -> dict[str, str]:
     acct = db.get(OwnerAccount, owner.owner_id)
     assert acct is not None
     if not verify_password(acct.password_hash, body.current_password):
