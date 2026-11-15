@@ -35,7 +35,12 @@ from unjobless.fetch.politeness import log_fetch, robots_allows
 from unjobless.fetch.safe_fetch import SafeFetcher, validate_url
 from unjobless.fetch.urls import canonicalize_url, host_of
 from unjobless.ingestion.raw_store import store_item
-from unjobless.intelligence.structured import extract_main_text, find_jobpostings, looks_like_access_wall, page_meta
+from unjobless.intelligence.structured import (
+    extract_main_text,
+    find_jobpostings,
+    looks_like_access_wall,
+    page_meta,
+)
 from unjobless.jobs.queue import defer
 from unjobless.sources.contract import CollectedItem
 from unjobless.sources.service import ensure_system_source, is_excluded
