@@ -34,7 +34,9 @@ def _host_row(db: Session, host: str) -> HostRateState:
     return row
 
 
-def reserve_slot(db: Session, host: str, min_interval_seconds: float, *, max_wait: float = MAX_INLINE_WAIT_SECONDS) -> None:
+def reserve_slot(
+    db: Session, host: str, min_interval_seconds: float, *, max_wait: float = MAX_INLINE_WAIT_SECONDS
+) -> None:
     """Reserve the next request slot for `host`. Sleeps briefly or raises RateLimitWait.
 
     Uses a row lock so concurrent workers serialise per host.
@@ -61,7 +63,12 @@ def robots_for(db: Session, fetcher: SafeFetcher, url: str) -> robotparser.Robot
         robots_url = f"{parts.scheme}://{parts.netloc}/robots.txt"
         text = ""
         try:
-            res = fetcher.get(robots_url, accept="text/plain", content_types=("text/plain", "text/html"), max_bytes=512 * 1024)
+            res = fetcher.get(
+                robots_url,
+                accept="text/plain",
+                content_types=("text/plain", "text/html"),
+                max_bytes=512 * 1024,
+            )
             if res.status_code in (401, 403):
                 text = "User-agent: *\nDisallow: /"  # RFC 9309: unauthorised → treat as full disallow
             elif res.status_code < 400:
@@ -87,7 +94,14 @@ def robots_allows(db: Session, fetcher: SafeFetcher, url: str) -> bool:
     return rp.can_fetch(fetcher.user_agent, url)
 
 
-def log_fetch(db: Session, outcome: str, host: str | None, reason: str | None, status: int | None = None, size: int | None = None) -> None:
+def log_fetch(
+    db: Session,
+    outcome: str,
+    host: str | None,
+    reason: str | None,
+    status: int | None = None,
+    size: int | None = None,
+) -> None:
     db.add(FetchLog(host=host, outcome=outcome, reason=(reason or "")[:300], status_code=status, bytes=size))
 
 
