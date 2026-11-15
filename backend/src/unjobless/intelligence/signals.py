@@ -230,10 +230,6 @@ ROLE_RE = re.compile(
 ID_ROLE_RE = re.compile(r"\b(?:posisi|lowongan|magang|loker|dicari|dibutuhkan|hiring)\s*:?\s*([A-Za-z][\w /&+.-]{3,60}?)(?=[\n,.;!()]|\s-\s|$)", re.I)
 
 
-def explicit_open_call(h: dict[str, list[re.Match[str]]]) -> bool:
-    return any(re.search(r"(sudah dibuka|now open|is open|apply now|daftar sekarang)", m.group(0), re.I) for m in h.get("hiring", []))
-
-
 def _role_guess(title: str | None, text: str) -> tuple[str, str, str] | None:
     if title and len(title) < 140:
         m = ROLE_RE.search(title)
