@@ -29,7 +29,9 @@ from unjobless.sources.contract import CollectedItem
 INLINE_TEXT_LIMIT = 1_000_000  # characters kept inline in raw_text
 MAX_RAW_BYTES = 10 * 1024 * 1024  # anything larger is truncated (flagged)
 MAX_EXTRACTED_CHARS = 300_000
-FORBIDDEN_META_KEYS = re.compile(r"(?i)(cookie|authorization|auth|token|session|password|secret|api[-_]?key|set-cookie|x-csrf)")
+FORBIDDEN_META_KEYS = re.compile(
+    r"(?i)(cookie|authorization|auth|token|session|password|secret|api[-_]?key|set-cookie|x-csrf)"
+)
 
 
 def normalize_for_hash(text: str) -> str:
@@ -38,7 +40,9 @@ def normalize_for_hash(text: str) -> str:
 
 
 def content_hash(text: str, title: str | None = None) -> str:
-    return hashlib.sha256((normalize_for_hash(title or "") + "\n" + normalize_for_hash(text)).encode()).hexdigest()
+    return hashlib.sha256(
+        (normalize_for_hash(title or "") + "\n" + normalize_for_hash(text)).encode()
+    ).hexdigest()
 
 
 def sanitize_metadata(meta: dict[str, Any], depth: int = 0) -> dict[str, Any]:
@@ -119,7 +123,9 @@ def store_item(
 
     h = content_hash(raw, item.title)
     existing = db.execute(
-        select(RawSourceVersion).where(RawSourceVersion.document_id == doc.id, RawSourceVersion.content_hash == h)
+        select(RawSourceVersion).where(
+            RawSourceVersion.document_id == doc.id, RawSourceVersion.content_hash == h
+        )
     ).scalar_one_or_none()
     if existing is not None:
         if doc.latest_version_id != existing.id:
@@ -167,7 +173,9 @@ def full_raw_text(version: RawSourceVersion, filestore: FileStore | None = None)
 
 def delete_document(db: Session, doc: RawSourceDocument) -> None:
     """Safe deletion: refuses while a canonical vacancy cites this document (provenance must remain)."""
-    cited = db.execute(select(JobVacancySource.id).where(JobVacancySource.raw_document_id == doc.id).limit(1)).first()
+    cited = db.execute(
+        select(JobVacancySource.id).where(JobVacancySource.raw_document_id == doc.id).limit(1)
+    ).first()
     if cited:
         raise Conflict("This raw document is evidence for a vacancy and cannot be deleted.")
     fs = get_filestore()
@@ -182,7 +190,11 @@ def delete_document(db: Session, doc: RawSourceDocument) -> None:
 def purge_expired(db: Session) -> int:
     """Delete raw documents past their retention date that are not cited by any vacancy."""
     n = 0
-    rows = db.execute(select(RawSourceDocument).where(RawSourceDocument.retention_until < utcnow())).scalars().all()
+    rows = (
+        db.execute(select(RawSourceDocument).where(RawSourceDocument.retention_until < utcnow()))
+        .scalars()
+        .all()
+    )
     for doc in rows:
         try:
             delete_document(db, doc)
