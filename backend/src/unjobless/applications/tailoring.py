@@ -90,7 +90,14 @@ def baseline(profile: ProfileData, vac: dict[str, Any], lang: Lang) -> dict[str,
 
 
 def with_ai(db: Session, profile: ProfileData, vac: dict[str, Any], lang: Lang, base: dict[str, Any], vacancy_id: int) -> tuple[dict[str, Any], int | None]:
-    from unjobless.ai.gateway import AIBudgetExceeded, AINotConfigured, AITaskFailed, AIUnavailable, ai_available, run_task
+    from unjobless.ai.gateway import (
+        AIBudgetExceeded,
+        AINotConfigured,
+        AITaskFailed,
+        AIUnavailable,
+        ai_available,
+        run_task,
+    )
 
     if not ai_available(db, "cv_tailoring"):
         return base, None
@@ -228,7 +235,14 @@ def cover_letter(db: Session, vacancy_id: int, *, language: Lang = "id", tailore
     vac = _vacancy_context(db, v)
     body, claims, run_id = None, [], None
     if use_ai:
-        from unjobless.ai.gateway import AIBudgetExceeded, AINotConfigured, AITaskFailed, AIUnavailable, ai_available, run_task
+        from unjobless.ai.gateway import (
+            AIBudgetExceeded,
+            AINotConfigured,
+            AITaskFailed,
+            AIUnavailable,
+            ai_available,
+            run_task,
+        )
 
         if ai_available(db, "cover_letter"):
             try:
