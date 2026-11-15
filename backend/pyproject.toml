@@ -14,7 +14,6 @@ dependencies = [
   "pydantic-settings>=2.16,<2.17",
   "structlog>=26.1",
   "httpx>=0.28,<0.29",
-  "dnspython>=2.9,<2.10",
   "cryptography>=50",
   "argon2-cffi>=25.1",
   "python-multipart>=0.0.33",
