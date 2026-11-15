@@ -7,6 +7,7 @@ export interface AuthState {
   bootstrapped: boolean
   authenticated: boolean
   setup_token_required: boolean
+  display_name?: string | null
 }
 interface AuthCtx {
   state: AuthState | undefined
