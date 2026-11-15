@@ -109,6 +109,10 @@ class CollectContext:
     new_cursor: dict[str, Any] | None = None
     listing_complete: bool = False
     log: Any = None
+    source_domain: str | None = None
+    min_interval_seconds: float = 2.0
+    # Fetch with robots.txt compliance + shared per-host rate limiting (provided by the runner).
+    polite_get: Callable[..., Any] | None = None
 
     def check_cancel(self) -> None:
         if self.is_cancelled():
