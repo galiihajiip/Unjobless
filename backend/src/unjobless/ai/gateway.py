@@ -157,7 +157,7 @@ def run_task(
     t = get_task(task_name)
     provider, model = resolve_route(db, task_name, provider_id)
     budget = _setting(db, "ai_daily_budget_usd", None)
-    if budget is not None and spent_today(db) >= float(budget or 0):
+    if budget is not None and spent_today(db) >= float(budget):
         raise AIBudgetExceeded("Today's AI budget has been reached. Raise it in AI Studio or wait.")
     _ensure_prompt_version(db, t)
     user = render_user(payload)
