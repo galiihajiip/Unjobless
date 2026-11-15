@@ -42,7 +42,9 @@ def _defer_app() -> Any:
 
             from unjobless.jobs.app import conninfo
 
-            app = procrastinate.App(connector=procrastinate.SyncPsycopgConnector(conninfo=conninfo(), min_size=1, max_size=4))
+            app = procrastinate.App(
+                connector=procrastinate.SyncPsycopgConnector(conninfo=conninfo(), min_size=1, max_size=4)
+            )
             app.open()
             atexit.register(app.close)
             _app = app
