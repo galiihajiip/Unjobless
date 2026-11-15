@@ -90,3 +90,37 @@ def trends_refresh() -> None:
 
     with session_scope() as db:
         refresh_trends(db)
+
+
+def daily_backup() -> None:
+    """Automatic daily backup when pg_dump is available (always in the Docker image)."""
+    import shutil
+
+    if not shutil.which("pg_dump"):
+        return
+    from unjobless.db.models import AppSettings
+    from unjobless.ops.backup import create_backup
+
+    with session_scope() as db:
+        row = db.get(AppSettings, "app")
+        keep = int((row.value or {}).get("backup_keep", 7)) if row else 7
+    create_backup(keep=keep)
+
+
+def raw_retention() -> None:
+    """Mark uncited raw documents older than the configured retention for deletion."""
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    from unjobless.db.models import AppSettings, RawSourceDocument
+
+    with session_scope() as db:
+        row = db.get(AppSettings, "app")
+        days = (row.value or {}).get("raw_retention_days") if row else None
+        if days:
+            db.execute(
+                update(RawSourceDocument)
+                .where(RawSourceDocument.retention_until.is_(None), RawSourceDocument.last_collected_at < utcnow() - timedelta(days=int(days)))
+                .values(retention_until=utcnow())
+            )
