@@ -218,3 +218,16 @@ def test_mock_source_referral_creates_signal(db):
     s = db.query(OpportunitySignal).one()
     assert s.primary_classification.value == "REFERRAL_SIGNAL" and s.status == V.POTENTIAL_LEAD
     assert db.query(JobVacancy).count() == 0
+
+
+def test_same_role_listed_for_two_countries_in_one_ats_stays_separate(db):
+    import json
+
+    src = approved_source(db, key="gh", connector_type="greenhouse_board", config={"board": "acme"})
+    body = json.loads(fixture_json("greenhouse.json"))
+    j = body["jobs"][0]
+    twin = {**j, "id": 999999, "absolute_url": j["absolute_url"] + "-de", "location": {"name": "Remote, Germany"}}
+    j["location"] = {"name": "Remote, Netherlands"}
+    body["jobs"] = [j, twin]
+    run_gh(db, src, json.dumps(body).encode())
+    assert db.query(JobVacancy).filter(JobVacancy.merged_into_id.is_(None)).count() == 2
