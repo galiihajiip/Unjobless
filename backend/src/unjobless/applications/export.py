@@ -25,10 +25,30 @@ Template = Literal["ats_classic", "modern_professional"]
 TEMPLATES = ("ats_classic", "modern_professional")
 ACCENT = (0x59, 0x27, 0xB9)  # --brand-700
 HEADINGS = {
-    "id": {"summary": "Ringkasan", "experience": "Pengalaman", "projects": "Proyek", "education": "Pendidikan", "skills": "Keahlian",
-           "certifications": "Sertifikasi", "awards": "Penghargaan", "publications": "Publikasi", "languages": "Bahasa", "present": "sekarang"},
-    "en": {"summary": "Summary", "experience": "Experience", "projects": "Projects", "education": "Education", "skills": "Skills",
-           "certifications": "Certifications", "awards": "Awards", "publications": "Publications", "languages": "Languages", "present": "present"},
+    "id": {
+        "summary": "Ringkasan",
+        "experience": "Pengalaman",
+        "projects": "Proyek",
+        "education": "Pendidikan",
+        "skills": "Keahlian",
+        "certifications": "Sertifikasi",
+        "awards": "Penghargaan",
+        "publications": "Publikasi",
+        "languages": "Bahasa",
+        "present": "sekarang",
+    },
+    "en": {
+        "summary": "Summary",
+        "experience": "Experience",
+        "projects": "Projects",
+        "education": "Education",
+        "skills": "Skills",
+        "certifications": "Certifications",
+        "awards": "Awards",
+        "publications": "Publications",
+        "languages": "Languages",
+        "present": "present",
+    },
 }
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -51,16 +71,71 @@ def sections(doc: dict[str, Any]) -> list[tuple[str, list[dict[str, Any]]]]:
     if doc.get("summary"):
         out.append((h["summary"], [{"text": doc["summary"]}]))
     if doc["experiences"]:
-        out.append((h["experience"], [{"title": f"{e['title']} — {e['organization']}", "meta": " · ".join(x for x in [e.get("location"), _dates(e.get("start"), e.get("end"), lang)] if x), "bullets": e["bullets"]} for e in doc["experiences"]]))
+        out.append(
+            (
+                h["experience"],
+                [
+                    {
+                        "title": f"{e['title']} — {e['organization']}",
+                        "meta": " · ".join(
+                            x for x in [e.get("location"), _dates(e.get("start"), e.get("end"), lang)] if x
+                        ),
+                        "bullets": e["bullets"],
+                    }
+                    for e in doc["experiences"]
+                ],
+            )
+        )
     if doc["projects"]:
-        out.append((h["projects"], [{"title": p["name"] + (f" — {p['role']}" if p.get("role") else ""), "meta": ", ".join(p.get("technologies") or []), "text": p.get("description"), "bullets": p["bullets"], "url": p.get("url")} for p in doc["projects"]]))
+        out.append(
+            (
+                h["projects"],
+                [
+                    {
+                        "title": p["name"] + (f" — {p['role']}" if p.get("role") else ""),
+                        "meta": ", ".join(p.get("technologies") or []),
+                        "text": p.get("description"),
+                        "bullets": p["bullets"],
+                        "url": p.get("url"),
+                    }
+                    for p in doc["projects"]
+                ],
+            )
+        )
     if doc["educations"]:
-        out.append((h["education"], [{"title": e["institution"], "meta": " · ".join(x for x in [" ".join(y for y in [e.get("degree"), e.get("field")] if y), _dates(e.get("start"), e.get("end"), lang), f"GPA {e['gpa']}" if e.get("gpa") else None] if x)} for e in doc["educations"]]))
+        out.append(
+            (
+                h["education"],
+                [
+                    {
+                        "title": e["institution"],
+                        "meta": " · ".join(
+                            x
+                            for x in [
+                                " ".join(y for y in [e.get("degree"), e.get("field")] if y),
+                                _dates(e.get("start"), e.get("end"), lang),
+                                f"GPA {e['gpa']}" if e.get("gpa") else None,
+                            ]
+                            if x
+                        ),
+                    }
+                    for e in doc["educations"]
+                ],
+            )
+        )
     if doc["skills"]:
         out.append((h["skills"], [{"text": ", ".join(doc["skills"])}]))
     for key in ("certifications", "awards", "publications"):
         if doc.get(key):
-            out.append((h[key], [{"text": " — ".join(x for x in [c.get("name"), c.get("issuer"), c.get("date")] if x)} for c in doc[key]]))
+            out.append(
+                (
+                    h[key],
+                    [
+                        {"text": " — ".join(x for x in [c.get("name"), c.get("issuer"), c.get("date")] if x)}
+                        for c in doc[key]
+                    ],
+                )
+            )
     if doc.get("languages"):
         out.append((h["languages"], [{"text": ", ".join(doc["languages"])}]))
     return out
@@ -68,7 +143,9 @@ def sections(doc: dict[str, Any]) -> list[tuple[str, list[dict[str, Any]]]]:
 
 def _contact_line(doc: dict[str, Any]) -> str:
     c = doc["contact"]
-    return " · ".join(x for x in [c.get("email"), c.get("phone"), c.get("location"), *doc.get("links", [])[:3]] if x)
+    return " · ".join(
+        x for x in [c.get("email"), c.get("phone"), c.get("location"), *doc.get("links", [])[:3]] if x
+    )
 
 
 # ---------------------------------------------------------------- DOCX
@@ -140,7 +217,9 @@ def render_docx(doc: dict[str, Any], template: Template) -> bytes:
 
 def _hyperlink(paragraph: Any, url: str, text: str, qn: Any, OxmlElement: Any) -> None:
     part = paragraph.part
-    r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+    r_id = part.relate_to(
+        url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True
+    )
     link = OxmlElement("w:hyperlink")
     link.set(qn("r:id"), r_id)
     run = OxmlElement("w:r")
@@ -212,26 +291,57 @@ def render_pdf(doc: dict[str, Any], template: Template) -> bytes:
     regular, bold = _fonts()
     modern = template == "modern_professional"
     accent = colors.Color(ACCENT[0] / 255, ACCENT[1] / 255, ACCENT[2] / 255)
-    base = ParagraphStyle("base", fontName=regular, fontSize=10 if modern else 10.5, leading=13.5 if modern else 14)
-    name_st = ParagraphStyle("name", parent=base, fontName=bold, fontSize=19 if modern else 16, leading=23, textColor=accent if modern else colors.black)
-    head_st = ParagraphStyle("head", parent=base, fontName=bold, fontSize=11.5, leading=15, spaceBefore=9, spaceAfter=3, textColor=accent if modern else colors.black)
+    base = ParagraphStyle(
+        "base", fontName=regular, fontSize=10 if modern else 10.5, leading=13.5 if modern else 14
+    )
+    name_st = ParagraphStyle(
+        "name",
+        parent=base,
+        fontName=bold,
+        fontSize=19 if modern else 16,
+        leading=23,
+        textColor=accent if modern else colors.black,
+    )
+    head_st = ParagraphStyle(
+        "head",
+        parent=base,
+        fontName=bold,
+        fontSize=11.5,
+        leading=15,
+        spaceBefore=9,
+        spaceAfter=3,
+        textColor=accent if modern else colors.black,
+    )
     title_st = ParagraphStyle("title", parent=base, fontName=bold, spaceBefore=4)
     meta_st = ParagraphStyle("meta", parent=base, textColor=colors.Color(0.33, 0.33, 0.39), fontSize=9.5)
     buf = io.BytesIO()
-    pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=1.7 * cm, bottomMargin=1.7 * cm,
-                            title=f"CV {doc['contact'].get('full_name') or ''}".strip(), author=doc["contact"].get("full_name") or "")
+    pdf = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        topMargin=1.7 * cm,
+        bottomMargin=1.7 * cm,
+        title=f"CV {doc['contact'].get('full_name') or ''}".strip(),
+        author=doc["contact"].get("full_name") or "",
+    )
     story: list[Any] = [Paragraph(_esc(doc["contact"].get("full_name") or ""), name_st)]
     if doc.get("headline"):
         story.append(Paragraph(_esc(doc["headline"]), base))
     contact = _contact_line(doc)
     if contact:
-        parts = [f'<link href="{_esc(p)}" color="blue">{_esc(p)}</link>' if p.startswith("http") else _esc(p) for p in contact.split(" · ")]
+        parts = [
+            f'<link href="{_esc(p)}" color="blue">{_esc(p)}</link>' if p.startswith("http") else _esc(p)
+            for p in contact.split(" · ")
+        ]
         story.append(Paragraph(" · ".join(parts), meta_st))
     story.append(Spacer(1, 6))
     for title, items in sections(doc):
         story.append(Paragraph(_esc(title if modern else title.upper()), head_st))
         if modern:
-            story.append(HRFlowable(width="100%", thickness=0.6, color=colors.Color(0.84, 0.75, 1), spaceAfter=4))
+            story.append(
+                HRFlowable(width="100%", thickness=0.6, color=colors.Color(0.84, 0.75, 1), spaceAfter=4)
+            )
         for it in items:
             if it.get("title"):
                 story.append(Paragraph(_esc(it["title"]), title_st))
@@ -240,9 +350,21 @@ def render_pdf(doc: dict[str, Any], template: Template) -> bytes:
             if it.get("text"):
                 story.append(Paragraph(_esc(it["text"]), base))
             if it.get("bullets"):
-                story.append(ListFlowable([ListItem(Paragraph(_esc(b), base), leftIndent=12) for b in it["bullets"]], bulletType="bullet", start="•", leftIndent=12, bulletFontName=regular))
+                story.append(
+                    ListFlowable(
+                        [ListItem(Paragraph(_esc(b), base), leftIndent=12) for b in it["bullets"]],
+                        bulletType="bullet",
+                        start="•",
+                        leftIndent=12,
+                        bulletFontName=regular,
+                    )
+                )
             if it.get("url"):
-                story.append(Paragraph(f'<link href="{_esc(it["url"])}" color="blue">{_esc(it["url"])}</link>', meta_st))
+                story.append(
+                    Paragraph(
+                        f'<link href="{_esc(it["url"])}" color="blue">{_esc(it["url"])}</link>', meta_st
+                    )
+                )
     pdf.build(story)
     return buf.getvalue()
 
@@ -256,7 +378,9 @@ def render_letter_pdf(body: str) -> bytes:
     regular, _ = _fonts()
     st = ParagraphStyle("b", fontName=regular, fontSize=11, leading=16)
     buf = io.BytesIO()
-    pdf = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2.5 * cm, rightMargin=2.5 * cm, topMargin=2.5 * cm, bottomMargin=2.5 * cm)
+    pdf = SimpleDocTemplate(
+        buf, pagesize=A4, leftMargin=2.5 * cm, rightMargin=2.5 * cm, topMargin=2.5 * cm, bottomMargin=2.5 * cm
+    )
     story: list[Any] = []
     for para in body.split("\n\n"):
         story += [Paragraph(_esc(para).replace("\n", "<br/>"), st), Spacer(1, 8)]
@@ -282,7 +406,9 @@ def _slug(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "-", s).strip("-")[:40] or "cv"
 
 
-def export_resume(db: Session, tr: TailoredResume, fmt: Literal["pdf", "docx"], template: Template) -> ExportFile:
+def export_resume(
+    db: Session, tr: TailoredResume, fmt: Literal["pdf", "docx"], template: Template
+) -> ExportFile:
     if template not in TEMPLATES:
         raise ValidationFailed("Unknown template.")
     doc = resolved_document(db, tr)
@@ -290,7 +416,16 @@ def export_resume(db: Session, tr: TailoredResume, fmt: Literal["pdf", "docx"], 
     v = db.get(JobVacancy, tr.vacancy_id)
     name = f"CV-{_slug(doc['contact'].get('full_name') or 'candidate')}-{_slug(v.company_name or v.title if v else 'role')}-v{tr.id}-{datetime.now():%Y%m%d}.{fmt}"
     ref, _ = get_filestore().put(data, namespace="exports", suffix=f".{fmt}")
-    ef = ExportFile(tailored_resume_id=tr.id, profile_version_id=tr.profile_version_id, vacancy_id=tr.vacancy_id, format=fmt, template=template, filename=name, blob_ref=ref, byte_size=len(data))
+    ef = ExportFile(
+        tailored_resume_id=tr.id,
+        profile_version_id=tr.profile_version_id,
+        vacancy_id=tr.vacancy_id,
+        format=fmt,
+        template=template,
+        filename=name,
+        blob_ref=ref,
+        byte_size=len(data),
+    )
     db.add(ef)
     db.flush()
     return ef
@@ -299,8 +434,16 @@ def export_resume(db: Session, tr: TailoredResume, fmt: Literal["pdf", "docx"], 
 def export_letter(db: Session, cl: CoverLetter, fmt: Literal["pdf", "docx"]) -> ExportFile:
     data = render_letter_pdf(cl.body) if fmt == "pdf" else render_letter_docx(cl.body)
     ref, _ = get_filestore().put(data, namespace="exports", suffix=f".{fmt}")
-    ef = ExportFile(cover_letter_id=cl.id, profile_version_id=cl.profile_version_id, vacancy_id=cl.vacancy_id, format=fmt, template="letter",
-                    filename=f"Cover-letter-v{cl.id}-{datetime.now():%Y%m%d}.{fmt}", blob_ref=ref, byte_size=len(data))
+    ef = ExportFile(
+        cover_letter_id=cl.id,
+        profile_version_id=cl.profile_version_id,
+        vacancy_id=cl.vacancy_id,
+        format=fmt,
+        template="letter",
+        filename=f"Cover-letter-v{cl.id}-{datetime.now():%Y%m%d}.{fmt}",
+        blob_ref=ref,
+        byte_size=len(data),
+    )
     db.add(ef)
     db.flush()
     return ef
