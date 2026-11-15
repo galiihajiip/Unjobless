@@ -62,7 +62,10 @@ class Settings(BaseSettings):
         if self.env == "production":
             missing = [
                 name
-                for name, val in (("UNJOBLESS_MASTER_KEY", self.master_key), ("UNJOBLESS_SESSION_SECRET", self.session_secret))
+                for name, val in (
+                    ("UNJOBLESS_MASTER_KEY", self.master_key),
+                    ("UNJOBLESS_SESSION_SECRET", self.session_secret),
+                )
                 if val is None or len(val.get_secret_value()) < 32
             ]
             if missing:
