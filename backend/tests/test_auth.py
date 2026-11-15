@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from unjobless.api.app import create_app
-from unjobless.api.router import build_private_router
 
 pytestmark = pytest.mark.db
 
@@ -24,7 +23,12 @@ def csrf(client):
 
 def test_state_before_bootstrap(client):
     r = client.get("/api/auth/state")
-    assert r.json() == {"bootstrapped": False, "authenticated": False, "setup_token_required": False, "display_name": None}
+    assert r.json() == {
+        "bootstrapped": False,
+        "authenticated": False,
+        "setup_token_required": False,
+        "display_name": None,
+    }
 
 
 def test_bootstrap_once_then_rejected(client):
@@ -86,7 +90,14 @@ def test_private_routes_require_auth_and_csrf(client):
     assert client.get("/api/auth/sessions").status_code == 401
 
 
-PUBLIC_PATHS = {"/api/health/live", "/api/health/ready", "/api/auth/state", "/api/auth/bootstrap", "/api/auth/login", "/api/auth/logout"}
+PUBLIC_PATHS = {
+    "/api/health/live",
+    "/api/health/ready",
+    "/api/auth/state",
+    "/api/auth/bootstrap",
+    "/api/auth/login",
+    "/api/auth/logout",
+}
 
 
 def test_every_private_route_rejects_anonymous(client):
@@ -112,7 +123,11 @@ def test_password_change_revokes_sessions(client):
     bootstrap(client)
     other = TestClient(client.app, client=("203.0.113.6", 50000))
     other.post("/api/auth/login", json={"password": PW})
-    r = client.post("/api/auth/password", json={"current_password": PW, "new_password": "another long passphrase"}, headers=csrf(client))
+    r = client.post(
+        "/api/auth/password",
+        json={"current_password": PW, "new_password": "another long passphrase"},
+        headers=csrf(client),
+    )
     assert r.status_code == 200
     assert other.get("/api/auth/sessions").status_code == 401
     assert client.get("/api/auth/sessions").status_code == 200
