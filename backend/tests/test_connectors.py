@@ -16,10 +16,19 @@ AS = "https://api.ashbyhq.com/posting-api/job-board/acme?includeCompensation=tru
 
 @pytest.mark.parametrize(
     "ctype,url,fixture",
-    [("greenhouse_board", GH, "greenhouse.json"), ("lever_postings", LV, "lever.json"), ("ashby_board", AS, "ashby.json")],
+    [
+        ("greenhouse_board", GH, "greenhouse.json"),
+        ("lever_postings", LV, "lever.json"),
+        ("ashby_board", AS, "ashby.json"),
+    ],
 )
 def test_ats_connector_maps_fields_and_provenance(db, ctype, url, fixture):
-    src = approved_source(db, key=ctype.replace("_", "-"), connector_type=ctype, config={"board": "acme", "company_name": "Acme"})
+    src = approved_source(
+        db,
+        key=ctype.replace("_", "-"),
+        connector_type=ctype,
+        config={"board": "acme", "company_name": "Acme"},
+    )
     fetcher = FakeFetcher({url: (200, "application/json", fixture_json(fixture))})
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     out = runner.execute_run(db, run.id, fetcher=fetcher)
@@ -49,4 +58,6 @@ def test_invalid_board_slug_rejected(db):
     from unjobless.sources import service
 
     with pytest.raises(ValidationFailed):
-        service.create_source(db, key="bad", name="bad", connector_type="greenhouse_board", config={"board": "../../etc"})
+        service.create_source(
+            db, key="bad", name="bad", connector_type="greenhouse_board", config={"board": "../../etc"}
+        )
