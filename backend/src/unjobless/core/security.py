@@ -39,7 +39,6 @@ def _secret() -> bytes:
     s = get_settings().session_secret
     if s is None:
         # Development fallback: per-process random secret (sessions reset on restart).
-        global _DEV_SECRET
         return _DEV_SECRET
     return s.get_secret_value().encode()
 
