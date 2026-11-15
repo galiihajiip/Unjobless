@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { useToast } from '@/components/ui'
 import { ApiError, get } from './api'
 
-export function useGet<T>(key: QueryKey, path: string | null, opts: { refetchInterval?: number | false; enabled?: boolean } = {}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Interval = number | false | ((query: any) => number | false)
+export function useGet<T>(key: QueryKey, path: string | null, opts: { refetchInterval?: Interval; enabled?: boolean } = {}) {
   return useQuery({ queryKey: key, queryFn: () => get<T>(path as string), enabled: path !== null && opts.enabled !== false, refetchInterval: opts.refetchInterval })
 }
 
