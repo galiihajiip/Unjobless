@@ -30,7 +30,9 @@ def _key(purpose: str) -> bytes:
     if mk is None:
         raise MasterKeyMissing("UNJOBLESS_MASTER_KEY is not configured; secrets cannot be stored or read.")
     raw = base64.urlsafe_b64decode(mk.get_secret_value() + "==")
-    return HKDF(algorithm=hashes.SHA256(), length=32, salt=b"unjobless-secrets", info=purpose.encode()).derive(raw)
+    return HKDF(
+        algorithm=hashes.SHA256(), length=32, salt=b"unjobless-secrets", info=purpose.encode()
+    ).derive(raw)
 
 
 def encrypt_secret(plaintext: str, purpose: str = "ai-provider-key") -> bytes:
