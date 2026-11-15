@@ -124,6 +124,8 @@ def validate_url(
         raise BlockedURL("This host name refers to a local or internal network.", code="internal_host")
     if any(c for c in host if not (c.isalnum() or c in "-.")):
         raise BlockedURL("Host name contains invalid characters.", code="invalid_url")
+    if not resolve:  # static checks only (used for instant feedback; DNS is re-checked at fetch time)
+        return ValidatedTarget(url, scheme, host, port, [])
     try:
         ips = (resolver or system_resolver)(host, port)
     except (OSError, UnicodeError) as exc:
