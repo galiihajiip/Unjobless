@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree as ET  # noqa: S405 - parsing size-capped XML from permitted sources, no DTDs
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from selectolax.parser import HTMLParser
+from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
 from unjobless.core.errors import BlockedURL, FetchFailed
 from unjobless.domain.enums import CollectionMethod, SourceCategory
