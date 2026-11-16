@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { ClipboardPaste, Copy, Download, FileImage, Link2 } from 'lucide-react'
-import { useDeferredValue, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { ItemStatusBadge } from '@/components/domain/StatusBadge'
 import { Alert, Badge, Button, Card, CardTitle, EmptyState, ErrorState, LoadingCards, PageHeader, Select, Tabs, TextArea, TextInput } from '@/components/ui'
@@ -87,6 +87,30 @@ function UrlTab() {
   )
 }
 
+/** Bookmarklet: sends the page the owner is viewing (in their own browser) to /import/clip via postMessage. */
+export function bookmarkletCode(origin: string): string {
+  const js = `(function(){var O=${JSON.stringify(origin)};var s=String(window.getSelection()||'');var d={type:'unjobless-clip',url:location.href,title:document.title,text:(s.length>40?s:document.body.innerText).slice(0,190000)};var w=window.open(O+'/import/clip','unjobless_clip');if(!w){alert('Allow pop-ups for this site to use Send to Unjobless');return;}var n=0;var t=setInterval(function(){n++;try{w.postMessage(d,O)}catch(e){}if(n>240)clearInterval(t)},250);window.addEventListener('message',function(e){if(e.origin===O&&e.data==='unjobless-clip-received')clearInterval(t)})})();`
+  return `javascript:${encodeURIComponent(js)}`
+}
+
+function Clipper() {
+  const ref = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    // React blocks javascript: URLs in JSX, so the bookmarklet href is set directly on the element.
+    ref.current?.setAttribute('href', bookmarkletCode(window.location.origin))
+  }, [])
+  return (
+    <Card tone="soft" className="stack-sm">
+      <strong>One-click clipper for sites that block bots (Glints, LinkedIn, JobStreet…)</strong>
+      <span className="small secondary">Drag this button to your bookmarks bar. While viewing a job in your browser, click it: the page text opens here for review. It sends only what you can see; nothing logs in or scrapes for you.</span>
+      <a ref={ref} className="btn btn-secondary btn-sm" style={{ alignSelf: 'flex-start', cursor: 'grab' }} onClick={(e) => e.preventDefault()} draggable>
+        Send to Unjobless
+      </a>
+      <span className="xs muted">Tip: select the job description first to capture only that part. Allow pop-ups for the job site if asked.</span>
+    </Card>
+  )
+}
+
 function PasteTab() {
   const navigate = useNavigate()
   const [f, setF] = useState({ text: '', source_url: '', platform: '', author_label: '', published_at: '', content_type_hint: '', notes: '', extra_text: '' })
@@ -95,6 +119,8 @@ function PasteTab() {
     records: [{ ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v || null])), text: f.text, published_at: f.published_at ? new Date(f.published_at).toISOString() : null }],
   }), { invalidate: [['batches'], ['review-queue']], success: 'Saved exactly as pasted — analysing', onSuccess: (r) => navigate(`/import/batches/${r.batch.id}`) })
   return (
+    <div className="stack">
+    <Clipper />
     <Card className="stack">
       <TextArea label="Pasted content" rows={10} value={f.text} onChange={set('text')} hint="The text is stored exactly as pasted. Only paste content you are allowed to use." required />
       <div className="grid grid-2">
@@ -109,6 +135,7 @@ function PasteTab() {
       {submit.error && <Alert tone="danger">{errorMessage(submit.error)}</Alert>}
       <Button variant="primary" icon={<ClipboardPaste size={16} />} disabled={!f.text.trim()} loading={submit.isPending} onClick={() => submit.mutate(undefined)} style={{ alignSelf: 'flex-start' }}>Analyse pasted content</Button>
     </Card>
+    </div>
   )
 }
 
