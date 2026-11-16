@@ -80,6 +80,20 @@ These are recommendations; the owner decides (audit decision D2). No block conte
 
 First useful personal release = phases 0–4 (minus 16), plus 17, 19, 20, 21, 22, 23, 24, 25, 29, 30, 33, 35, 38. Deferrable without blocking the MVP: 16 (OCR/media), 18 and 34 (sentiment/insights), 28 (rich health dashboard — basic status from 11 suffices), 32 (PWA install polish), social-platform connectors.
 
-## 6. Next block
+## 6. Status (2026-11-16)
 
-**Prompt Block 01 — Architecture options and ADRs.** Inputs needed from the owner first: D1 stack preference (if any), D4 VPS size/architecture.
+All blocks 00–43 are implemented in the re-sequenced order of §4: AI foundation (26–27) right after the collection core, and 23 → 24 → 22. Defaults chosen where the owner had not decided:
+
+| Decision | Default taken |
+|---|---|
+| D1 stack | Python (FastAPI + Procrastinate) + React/Vite PWA, Postgres-only (ADR 0001) |
+| D2 re-sequencing | Applied |
+| D3 AI provider | Anthropic adapter (default `claude-opus-5-5`) + generic OpenAI-compatible adapter; optional |
+| D4 VPS | ≥ 2 vCPU / 4 GB, amd64 or arm64 |
+| D5 language | English UI; documents in Indonesian or English |
+| D6 CI | GitHub Actions workflow included |
+| D7 first sources | Greenhouse, Lever, Ashby connectors + career-page crawler; owner adds boards |
+| D8 off-server backups | Documented rsync/copy; destination is the owner's choice |
+| D9 scholarships | Class exists, separate from vacancies |
+
+Open follow-ups: [KNOWN_LIMITATIONS](release/KNOWN_LIMITATIONS.md).
