@@ -14,10 +14,33 @@ from unjobless.jobs import runner
 
 pytestmark = pytest.mark.db
 URL = "https://id.jooble.org/api/test-key"
-JOBS = {"totalCount": 2, "jobs": [
-    {"id": 11, "title": "Magang <b>Data</b> Analyst", "location": "Jakarta", "snippet": "Magang 6 bulan, SQL &amp; Excel", "salary": "Rp 3 jt", "source": "glints.com", "type": "Internship", "link": "https://id.jooble.org/desc/11", "company": "PT Contoh", "updated": "2026-11-15T00:00:00"},
-    {"id": 12, "title": "Intern Marketing", "location": "Bandung", "snippet": "", "source": "kalibrr.com", "link": "https://id.jooble.org/desc/12", "company": "CV Maju", "updated": "2026-11-14T00:00:00"},
-]}
+JOBS = {
+    "totalCount": 2,
+    "jobs": [
+        {
+            "id": 11,
+            "title": "Magang <b>Data</b> Analyst",
+            "location": "Jakarta",
+            "snippet": "Magang 6 bulan, SQL &amp; Excel",
+            "salary": "Rp 3 jt",
+            "source": "glints.com",
+            "type": "Internship",
+            "link": "https://id.jooble.org/desc/11",
+            "company": "PT Contoh",
+            "updated": "2026-11-15T00:00:00",
+        },
+        {
+            "id": 12,
+            "title": "Intern Marketing",
+            "location": "Bandung",
+            "snippet": "",
+            "source": "kalibrr.com",
+            "link": "https://id.jooble.org/desc/12",
+            "company": "CV Maju",
+            "updated": "2026-11-14T00:00:00",
+        },
+    ],
+}
 
 
 class CountingFetcher(FakeFetcher):
@@ -27,14 +50,24 @@ class CountingFetcher(FakeFetcher):
 
 
 def with_key(db, src):
-    sec = EncryptedSecret(purpose="source-secret", ciphertext=encrypt_secret("test-key", purpose="source-secret"), fingerprint="f", hint="…-key")
+    sec = EncryptedSecret(
+        purpose="source-secret",
+        ciphertext=encrypt_secret("test-key", purpose="source-secret"),
+        fingerprint="f",
+        hint="…-key",
+    )
     db.add(sec)
     db.flush()
     src.secret_id = sec.id
 
 
 def test_jooble_maps_jobs_as_likely_open(db):
-    src = approved_source(db, key="jb", connector_type="jooble_api", config={"searches": [{"keywords": "magang", "location": "Indonesia"}], "pages_per_search": 1})
+    src = approved_source(
+        db,
+        key="jb",
+        connector_type="jooble_api",
+        config={"searches": [{"keywords": "magang", "location": "Indonesia"}], "pages_per_search": 1},
+    )
     with_key(db, src)
     f = CountingFetcher({URL: (200, "application/json", json.dumps(JOBS))})
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
@@ -49,7 +82,16 @@ def test_jooble_maps_jobs_as_likely_open(db):
 
 
 def test_daily_budget_is_respected(db):
-    src = approved_source(db, key="jb", connector_type="jooble_api", config={"searches": [{"keywords": "a"}, {"keywords": "b"}, {"keywords": "c"}], "pages_per_search": 1, "daily_request_budget": 2})
+    src = approved_source(
+        db,
+        key="jb",
+        connector_type="jooble_api",
+        config={
+            "searches": [{"keywords": "a"}, {"keywords": "b"}, {"keywords": "c"}],
+            "pages_per_search": 1,
+            "daily_request_budget": 2,
+        },
+    )
     with_key(db, src)
     f = CountingFetcher({URL: (200, "application/json", json.dumps(JOBS))})
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
@@ -80,6 +122,11 @@ def test_safe_fetcher_posts_json_and_never_follows_post_redirects():
     f = SafeFetcher(resolver=lambda h, p: ["93.184.215.14"], transport=httpx.MockTransport(handler))
     f.get("https://api.example.com/x", json_body={"a": 1})
     assert seen == {"method": "POST", "body": {"a": 1}}
-    f2 = SafeFetcher(resolver=lambda h, p: ["93.184.215.14"], transport=httpx.MockTransport(lambda r: httpx.Response(302, headers={"location": "http://127.0.0.1/"})))
+    f2 = SafeFetcher(
+        resolver=lambda h, p: ["93.184.215.14"],
+        transport=httpx.MockTransport(
+            lambda r: httpx.Response(302, headers={"location": "http://127.0.0.1/"})
+        ),
+    )
     with pytest.raises(FetchFailed):
         f2.get("https://api.example.com/x", json_body={"a": 1})
