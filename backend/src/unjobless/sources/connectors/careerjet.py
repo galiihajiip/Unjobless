@@ -74,7 +74,9 @@ class CareerjetConfig(BaseModel):
         max_length=20,
     )
     pages_per_search: int = Field(default=10, ge=1, le=50)
-    page_size: int = Field(default=20, ge=1, le=100, description="Careerjet currently returns at most 20 per page.")
+    page_size: int = Field(
+        default=20, ge=1, le=100, description="Careerjet currently returns at most 20 per page."
+    )
 
 
 @register
