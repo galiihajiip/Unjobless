@@ -11,6 +11,13 @@ from unjobless.jobs import runner
 
 pytestmark = pytest.mark.db
 
+
+@pytest.fixture(autouse=True)
+def _no_pause(monkeypatch):
+    from unjobless.sources.connectors import remote_feeds
+
+    monkeypatch.setattr(remote_feeds, "PAGE_PAUSE_SECONDS", 0)
+
 SR = "https://api.smartrecruiters.com/v1/companies/acme/postings"
 
 
