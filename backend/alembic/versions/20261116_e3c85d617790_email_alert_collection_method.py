@@ -35,7 +35,7 @@ TABLES = ["sources", "raw_source_documents"]
 def _replace(values: list[str]) -> None:
     allowed = ", ".join(f"'{v}'" for v in values)
     for t in TABLES:
-        op.drop_constraint(f"ck_{t}_collection_method_enum", t, type_="check")
+        op.drop_constraint(op.f(f"ck_{t}_collection_method_enum"), t, type_="check")
         op.create_check_constraint(
             op.f(f"ck_{t}_collection_method_enum"), t, f"collection_method IN ({allowed})"
         )
