@@ -141,3 +141,41 @@ def test_basic_auth_sent_only_to_requested_host():
     with pytest.raises(FetchFailed):
         f.get("https://api.example.com/q", basic_auth=("k", ""))
     assert len(seen) == 1 and seen[0][1].startswith("Basic ")
+
+
+class PagedFetcher(AnyUrlFetcher):
+    """Careerjet returns 20 jobs per page whatever page_size says."""
+
+    def __init__(self, pages=3):
+        super().__init__()
+        self.pages = pages
+
+    def get(self, url, **kw):
+        page = int(parse_qs(urlsplit(url).query)["page"][0])
+        self.body = {
+            "type": "JOBS",
+            "hits": 20 * self.pages,
+            "pages": self.pages,
+            "jobs": [
+                {
+                    "title": f"Intern {page}-{i}",
+                    "company": "PT A",
+                    "url": f"https://jobviewtrack.com/p{page}-{i}",
+                }
+                for i in range(20)
+            ],
+        }
+        return super().get(url, **kw)
+
+
+def test_pages_beyond_first_even_when_api_caps_page_size_and_incremental_stop(db):
+    src = make(db, pages_per_search=10, page_size=100)
+    f = PagedFetcher(pages=3)
+    run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
+    runner.execute_run(db, run.id, fetcher=f)
+    assert len(f.calls) == 3 and run.new == 60
+    # Second run: page 1 is entirely known → the older pages are not requested again.
+    f2 = PagedFetcher(pages=3)
+    run2 = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
+    runner.execute_run(db, run2.id, fetcher=f2)
+    assert len(f2.calls) == 1 and run2.new == 0
