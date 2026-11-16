@@ -251,10 +251,14 @@ class SafeFetcher:
             if basic_auth is not None:
                 if redirects:
                     # Credentials are only ever sent to the originally requested API host.
-                    raise FetchFailed("The API redirected; credentials are not forwarded.", code="bad_redirect")
+                    raise FetchFailed(
+                        "The API redirected; credentials are not forwarded.", code="bad_redirect"
+                    )
                 import base64
 
-                headers["Authorization"] = "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
+                headers["Authorization"] = (
+                    "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
+                )
             extensions = {"sni_hostname": target.host} if target.scheme == "https" else {}
             remaining = self.total_timeout - (time.monotonic() - started)
             if remaining <= 0:
