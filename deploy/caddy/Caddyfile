@@ -10,10 +10,14 @@
 		X-Frame-Options "DENY"
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-		Cross-Origin-Opener-Policy "same-origin"
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 		-Server
 	}
+
+	# The browser clipper page is opened by the job site the owner is viewing and receives the page via
+	# postMessage, so it must keep its opener. Every other page isolates its browsing context.
+	@not_clip not path /import/clip
+	header @not_clip Cross-Origin-Opener-Policy "same-origin"
 
 	handle /api/* {
 		request_body {
