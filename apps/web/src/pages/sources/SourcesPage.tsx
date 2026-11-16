@@ -1,9 +1,9 @@
-import { DatabaseZap, Pause, Play, Plus, ShieldBan, Trash2 } from 'lucide-react'
+import { DatabaseZap, Pause, Play, Plus, ShieldBan, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { SchemaForm } from '@/components/domain/SchemaForm'
 import { HealthBadge } from '@/components/domain/StatusBadge'
-import { Alert, Badge, Button, Card, CardTitle, Dialog, EmptyState, ErrorState, LoadingCards, PageHeader, Select, TextArea, TextInput } from '@/components/ui'
+import { Alert, Badge, Button, Card, CardTitle, Checkbox, Dialog, EmptyState, ErrorState, LoadingCards, PageHeader, Select, TextArea, TextInput } from '@/components/ui'
 import { del, post } from '@/lib/api'
 import { fmtRelative, humanize } from '@/lib/format'
 import { errorMessage, useAction, useGet } from '@/lib/queries'
@@ -12,12 +12,13 @@ import type { ConnectorInfo, Source } from '@/lib/types'
 export default function SourcesPage() {
   const list = useGet<Source[]>(['sources'], '/sources', { refetchInterval: 15000 })
   const [adding, setAdding] = useState(false)
+  const [pack, setPack] = useState(false)
   const inv = [['sources'], ['overview']]
   const run = useAction((id: number) => post(`/sources/${id}/run`), { invalidate: inv, success: 'Run queued' })
   const state = useAction(({ id, action }: { id: number; action: string }) => post(`/sources/${id}/${action}`), { invalidate: inv, success: 'Updated' })
   return (
     <>
-      <PageHeader title="Sources" description="Where Unjobless may collect from. New sources start disabled until you review their terms and robots policy." actions={<Button variant="primary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>Add source</Button>} />
+      <PageHeader title="Sources" description="Where Unjobless may collect from. New sources start disabled until you review their terms and robots policy." actions={<><Button icon={<Sparkles size={16} />} onClick={() => setPack(true)}>Recommended sources</Button><Button variant="primary" icon={<Plus size={16} />} onClick={() => setAdding(true)}>Add source</Button></>} />
       <Alert tone="info">Collection is never real-time and never “all of the internet”. Each source shows when it was last checked and when it is next due.</Alert>
       <div className="stack" style={{ marginTop: 'var(--space-4)' }}>
         {list.isLoading ? <LoadingCards /> : list.error ? <ErrorState error={list.error} /> : !list.data?.length ? (
@@ -54,6 +55,7 @@ export default function SourcesPage() {
       </div>
       <Exclusions />
       {adding && <AddSource onClose={() => setAdding(false)} />}
+      {pack && <StarterPack onClose={() => setPack(false)} existing={(list.data ?? []).map((s) => s.key)} />}
     </>
   )
 }
@@ -114,5 +116,30 @@ function Exclusions() {
       </div>
       <Button size="sm" disabled={!pattern || !reason} loading={add.isPending} onClick={() => add.mutate(undefined)} style={{ alignSelf: 'flex-start' }}>Add exclusion</Button>
     </Card>
+  )
+}
+
+interface PackItem { key: string; name: string; connector_name: string; terms_review: string; attribution: string; documentation_url: string | null }
+
+function StarterPack({ onClose, existing }: { onClose: () => void; existing: string[] }) {
+  const q = useGet<PackItem[]>(['starter-pack'], '/sources/starter-pack')
+  const [sel, setSel] = useState<string[] | null>(null)
+  const items = (q.data ?? []).filter((p) => !existing.includes(p.key))
+  const chosen = sel ?? items.map((p) => p.key)
+  const act = useAction(() => post<Source[]>('/sources/starter-pack', { keys: chosen }), { invalidate: [['sources'], ['overview']], success: (r) => `${r.length} sources added and running`, onSuccess: onClose })
+  return (
+    <Dialog open onClose={onClose} title="Recommended sources" description="Public, documented job APIs verified to list jobs in Indonesia or remote jobs open to Indonesian applicants. Adding them records your approval of each source's API terms."
+      actions={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!chosen.length} loading={act.isPending} onClick={() => act.mutate(undefined)}>Approve & add {chosen.length}</Button></>}>
+      {!items.length ? <p className="small secondary">All recommended sources are already added.</p> : (
+        <ul className="list-plain stack-sm">
+          {items.map((p) => (
+            <li key={p.key} className="stack-sm" style={{ gap: 2 }}>
+              <Checkbox label={<span><strong>{p.name}</strong> <span className="muted xs">· {p.connector_name}</span></span>} checked={chosen.includes(p.key)} onChange={(e) => setSel(e.target.checked ? [...chosen, p.key] : chosen.filter((k) => k !== p.key))} />
+              <span className="xs muted" style={{ paddingLeft: 26 }}>{p.terms_review}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Dialog>
   )
 }
