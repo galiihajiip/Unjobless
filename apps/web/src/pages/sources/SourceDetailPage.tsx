@@ -3,7 +3,7 @@ import { useParams } from 'react-router'
 import { SchemaForm } from '@/components/domain/SchemaForm'
 import { HealthBadge } from '@/components/domain/StatusBadge'
 import { Alert, Badge, Button, Card, CardTitle, ErrorState, LoadingCards, PageHeader, Select, TextArea, TextInput } from '@/components/ui'
-import { patch, post } from '@/lib/api'
+import { del, patch, post, put } from '@/lib/api'
 import { fmtDate, fmtRelative, humanize } from '@/lib/format'
 import { errorMessage, useAction, useGet } from '@/lib/queries'
 import type { ConnectorInfo, Paged, RunSummary, Source } from '@/lib/types'
@@ -26,6 +26,7 @@ export default function SourceDetailPage() {
         eyebrow={<div className="row" style={{ gap: 6 }}><Badge>{humanize(src.state)}</Badge><Badge>Policy: {humanize(src.policy_status)}</Badge><HealthBadge value={src.health} /></div>} />
       <div className="two-col">
         <div className="stack">
+          {info?.auth_required && <SecretCard src={src} />}
           <PolicyReview src={src} />
           {info && <ConfigEditor src={src} info={info} />}
           <Card>
@@ -119,6 +120,28 @@ function FailedItems({ sourceId, runId }: { sourceId: number; runId: number }) {
     <Card>
       <CardTitle title={`Failed items in run #${runId}`} />
       <ul className="list-plain stack-sm">{q.data?.map((i) => <li key={i.id} className="small wrap-anywhere">{i.url ?? i.external_id} <div className="xs" style={{ color: 'var(--danger)' }}>{i.error}</div></li>)}</ul>
+    </Card>
+  )
+}
+
+function SecretCard({ src }: { src: Source }) {
+  const [value, setValue] = useState('')
+  const save = useAction(() => put(`/sources/${src.id}/secret`, { value }), { invalidate: [['source']], success: 'Credential saved (encrypted)', onSuccess: () => setValue('') })
+  const remove = useAction(() => del(`/sources/${src.id}/secret`), { invalidate: [['source']], success: 'Credential removed' })
+  return (
+    <Card className="stack">
+      <CardTitle title="Credential" />
+      <p className="small secondary">
+        {src.connector_type === 'email_job_alerts'
+          ? 'App password for the alert mailbox (for Gmail: Google Account › Security › 2-Step Verification › App passwords). Stored encrypted; never shown again.'
+          : 'Stored encrypted with your master key; never shown again.'}
+      </p>
+      <Badge tone={src.has_secret ? 'success' : 'warning'}>{src.has_secret ? 'Credential set' : 'No credential yet'}</Badge>
+      <TextInput label={src.has_secret ? 'Replace credential' : 'Credential'} type="password" autoComplete="off" value={value} onChange={(e) => setValue(e.target.value)} />
+      <div className="row">
+        <Button size="sm" variant="primary" disabled={value.length < 4} loading={save.isPending} onClick={() => save.mutate(undefined)}>Save</Button>
+        {src.has_secret && <Button size="sm" variant="ghost" onClick={() => remove.mutate(undefined)}>Remove</Button>}
+      </div>
     </Card>
   )
 }
