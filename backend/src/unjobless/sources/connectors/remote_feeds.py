@@ -8,6 +8,7 @@ conservative polling (Remotive asks for at most 4 requests/day → 6-hour minimu
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
@@ -20,6 +21,7 @@ from unjobless.sources.connectors.ats import _get_json, _iso
 from unjobless.sources.contract import CollectContext, CollectedItem, Connector, ConnectorInfo
 from unjobless.sources.registry import register
 
+PAGE_PAUSE_SECONDS = 4.0
 OPEN_TO_INDONESIA = [
     "worldwide",
     "anywhere",
@@ -117,8 +119,12 @@ class HimalayasConnector(Connector):
         cfg: Any = ctx.config
         cursor: str | None = None
         kept = scanned = 0
-        while kept < cfg.max_items and scanned < 5000:
+        pages = 0
+        while kept < cfg.max_items and scanned < 2000:
             ctx.check_cancel()
+            if pages:
+                time.sleep(PAGE_PAUSE_SECONDS)  # be gentle: Himalayas rate-limits fast paging
+            pages += 1
             data = _get_json(
                 ctx, "https://himalayas.app/jobs/api?limit=100" + (f"&cursor={cursor}" if cursor else "")
             )
