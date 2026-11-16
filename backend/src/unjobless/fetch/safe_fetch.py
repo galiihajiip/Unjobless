@@ -217,6 +217,7 @@ class SafeFetcher:
         extra_headers: dict[str, str] | None = None,
         max_bytes: int | None = None,
         json_body: dict[str, object] | None = None,
+        basic_auth: tuple[str, str] | None = None,
     ) -> FetchResult:
         """GET (or POST with a JSON body when `json_body` is given, e.g. documented search APIs).
 
@@ -247,6 +248,13 @@ class SafeFetcher:
             pinned_url = urlunsplit((target.scheme, netloc, parts.path or "/", parts.query, ""))
             host_header = target.host if target.port == default_port else f"{target.host}:{target.port}"
             headers = {"Host": host_header, "Accept": accept, **safe_extra}
+            if basic_auth is not None:
+                if redirects:
+                    # Credentials are only ever sent to the originally requested API host.
+                    raise FetchFailed("The API redirected; credentials are not forwarded.", code="bad_redirect")
+                import base64
+
+                headers["Authorization"] = "Basic " + base64.b64encode(f"{basic_auth[0]}:{basic_auth[1]}".encode()).decode()
             extensions = {"sni_hostname": target.host} if target.scheme == "https" else {}
             remaining = self.total_timeout - (time.monotonic() - started)
             if remaining <= 0:
