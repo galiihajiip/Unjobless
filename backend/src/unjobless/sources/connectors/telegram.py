@@ -90,7 +90,7 @@ def _tidy_line(line: str) -> str:
 def _text(node: Any) -> str:
     html = node.html or ""
     html = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
-    # NFKC turns "fancy" Unicode letters (𝐋𝐎𝐊𝐄𝐑, 𝑴𝒂𝒈𝒂𝒏𝒈) into plain text so search and extraction work.
+    # NFKC turns "fancy" Unicode letters (mathematical bold/italic) into plain text for search and extraction.
     raw = unicodedata.normalize("NFKC", LexborHTMLParser(html).text(deep=True, separator=""))
     return clean_text("\n".join(_tidy_line(x) for x in raw.splitlines()))
 
