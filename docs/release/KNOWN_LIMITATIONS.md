@@ -3,7 +3,7 @@
 ## Coverage & collection
 - Coverage is limited to **sources you enable** and **content you import**. There is no social-media API connector in v1; social posts come in via paste/upload.
 - Included connectors: Greenhouse, Lever and Ashby public job boards, and a generic career-page crawler (robots.txt-compliant, same-domain only). Many Indonesian job boards (e.g. JobStreet, Glints, Kalibrr) have no documented public API for this use. Import their pages by URL (where fetchable) or paste the content.
-- Pages that need login, JavaScript rendering or show a CAPTCHA are reported as unavailable. **No headless browser** is bundled.
+- Pages that need login, JavaScript rendering or show a CAPTCHA are reported as unavailable. **No headless browser** is bundled. Example: Glints answers automated requests (pages and sitemaps) with 403 + a Cloudflare CAPTCHA, so it cannot be collected automatically. Use the browser clipper (Import Center › Paste content) or paste.
 - Collection is scheduled (minimum interval 5 minutes), never real-time.
 
 ## Intelligence quality
