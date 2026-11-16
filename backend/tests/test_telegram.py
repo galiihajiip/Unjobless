@@ -109,3 +109,21 @@ def test_private_or_missing_channel_is_unavailable(db):
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     runner.execute_run(db, run.id, fetcher=f)
     assert run.status == RunStatus.FAILED and "nochannel" in (run.error_message or "")
+
+
+def test_titles_lose_emoji_and_markdown_but_keep_phone_numbers():
+    from unjobless.sources.connectors.telegram import _tidy_line
+
+    assert _tidy_line("📢 *LOWONGAN PEKERJAAN – AKUNTAN*") == "LOWONGAN PEKERJAAN – AKUNTAN"
+    assert _tidy_line("🎓 FRESH GRADUATE, ADA PELUANG!") == "FRESH GRADUATE, ADA PELUANG!"
+    assert _tidy_line("+62 812 3456") == "+62 812 3456" and _tidy_line("(Urgent) Admin") == "(Urgent) Admin"
+    assert _tidy_line("snake_case_word stays") == "snake_case_word stays"
+
+
+def test_company_does_not_run_onto_next_line():
+    from unjobless.intelligence.extraction import COMPANY_RE
+
+    assert (
+        COMPANY_RE.search("Rekrutmen PT Paguntaka Cahaya Nusantara\nPKWT").group(0)
+        == "PT Paguntaka Cahaya Nusantara"
+    )
