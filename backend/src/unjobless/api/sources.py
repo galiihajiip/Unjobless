@@ -298,6 +298,41 @@ def run_now(source_id: int, db: DB) -> dict[str, Any]:
     return run_summary(run)
 
 
+class SecretIn(BaseModel):
+    value: str = Field(min_length=4, max_length=500)
+
+
+@router.put("/{source_id}/secret")
+def set_secret(source_id: int, body: SecretIn, db: DB) -> dict[str, Any]:
+    """Store a connector credential (e.g. a mailbox app password) encrypted. Never returned."""
+    from unjobless.core.audit import audit
+    from unjobless.core.crypto import encrypt_secret, fingerprint, mask_hint
+    from unjobless.db.models import EncryptedSecret
+
+    s = service.get_source(db, source_id)
+    purpose = "source-secret"
+    if s.secret_id:
+        sec = db.get(EncryptedSecret, s.secret_id)
+    else:
+        sec = None
+    if sec is None:
+        sec = EncryptedSecret(purpose=purpose, ciphertext=b"", fingerprint="", hint="")
+        db.add(sec)
+    sec.purpose, sec.ciphertext = purpose, encrypt_secret(body.value, purpose=purpose)
+    sec.fingerprint, sec.hint = fingerprint(body.value), mask_hint(body.value)
+    db.flush()
+    s.secret_id = sec.id
+    audit(db, "source.secret_set", target_type="source", target_id=s.id)
+    return {"has_secret": True, "hint": sec.hint}
+
+
+@router.delete("/{source_id}/secret")
+def delete_secret(source_id: int, db: DB) -> dict[str, Any]:
+    s = service.get_source(db, source_id)
+    s.secret_id = None
+    return {"has_secret": False}
+
+
 @router.get("/{source_id}/runs")
 def runs(source_id: int, db: DB, limit: int = Query(20, le=100), offset: int = 0) -> dict[str, Any]:
     q = select(SourceRun).where(SourceRun.source_id == source_id)
