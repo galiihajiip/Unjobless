@@ -77,7 +77,8 @@ class TelegramConfig(BaseModel):
         return out
 
 
-LEAD_SYMBOLS = re.compile(r"^[\W_]+(?=\w)", re.U)  # emoji / bullets / markdown marks before the first word
+# Emoji / bullets before the first word (keeps "(", "+62", quotes, "#", "@", "$").
+LEAD_SYMBOLS = re.compile(r"^(?:[^\w\s(\[+\"'#@$]|_)+\s*", re.U)
 
 
 def _tidy_line(line: str) -> str:
