@@ -129,7 +129,7 @@ def install(db: Session, keys: list[str]) -> list[Source]:
             db,
             src,
             decision=PolicyStatus.APPROVED,
-            terms_notes=f"Documented public API. {info.terms_review} Attribution: {info.attribution}",
+            terms_notes=f"{info.terms_review} Attribution: {info.attribution}",
             reviewer_note="Approved by the owner via the recommended sources pack.",
         )
         service.change_state(db, src, SourceState.ENABLED)
