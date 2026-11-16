@@ -16,6 +16,7 @@ const ApplicationsPage = lazy(() => import('@/pages/applications/ApplicationsPag
 const ProfilePage = lazy(() => import('@/pages/profile/ProfilePage'))
 const ImportPage = lazy(() => import('@/pages/import/ImportPage'))
 const ImportBatchPage = lazy(() => import('@/pages/import/ImportBatchPage'))
+const ClipPage = lazy(() => import('@/pages/import/ClipPage'))
 const SourcesPage = lazy(() => import('@/pages/sources/SourcesPage'))
 const SourceDetailPage = lazy(() => import('@/pages/sources/SourceDetailPage'))
 const IntelligencePage = lazy(() => import('@/pages/intelligence/IntelligencePage'))
@@ -43,6 +44,7 @@ export const routes = [
           { path: 'profile', element: page(<ProfilePage />) },
           { path: 'import', element: page(<ImportPage />) },
           { path: 'import/batches/:id', element: page(<ImportBatchPage />) },
+          { path: 'import/clip', element: page(<ClipPage />) },
           { path: 'sources', element: page(<SourcesPage />) },
           { path: 'sources/:id', element: page(<SourceDetailPage />) },
           { path: 'intelligence', element: page(<IntelligencePage />) },
