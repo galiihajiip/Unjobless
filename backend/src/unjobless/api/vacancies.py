@@ -135,8 +135,8 @@ def _sources_for(db: DB, ids: list[int]) -> dict[int, list[dict[str, Any]]]:
 
 INTERN_TITLE = r"(intern|magang|internship|pkl|praktik kerja|kerja praktek|apprentice|trainee|mt program|graduate program)"
 SENIOR_TITLE = (
-    r"(senior|sr\.?\s|lead|principal|staff |head of|manager|director|vp|vice president|chief|"
-    r"supervisor|spv|kepala|architect|expert|specialist ii|iii)"
+    r"\y(senior|sr|lead|leader|principal|head|manager|director|vp|vice president|chief|"
+    r"supervisor|spv|kepala|architect|expert|staff engineer|staff software)\y"
 )
 
 
