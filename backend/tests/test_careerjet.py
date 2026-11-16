@@ -179,3 +179,25 @@ def test_pages_beyond_first_even_when_api_caps_page_size_and_incremental_stop(db
     run2 = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     runner.execute_run(db, run2.id, fetcher=f2)
     assert len(f2.calls) == 1 and run2.new == 0
+
+
+def test_same_job_with_new_tracking_url_is_one_item(db):
+    job = {
+        "title": "Business Intern",
+        "company": "Google",
+        "locations": "Jakarta",
+        "date": "Sun, 15 Nov 2026 00:00:00 GMT",
+    }
+    body = {
+        "type": "JOBS",
+        "hits": 2,
+        "pages": 1,
+        "jobs": [
+            {**job, "url": "https://jobviewtrack.com/v2/aaa", "description": "snippet <b>intern</b>"},
+            {**job, "url": "https://jobviewtrack.com/v2/bbb", "description": "other snippet"},
+        ],
+    }
+    src = make(db, searches=[{"keywords": "intern"}, {"keywords": "business"}])
+    run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
+    runner.execute_run(db, run.id, fetcher=AnyUrlFetcher(body=body))
+    assert run.new == 1
