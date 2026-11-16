@@ -18,6 +18,7 @@ def _no_pause(monkeypatch):
 
     monkeypatch.setattr(remote_feeds, "PAGE_PAUSE_SECONDS", 0)
 
+
 SR = "https://api.smartrecruiters.com/v1/companies/acme/postings"
 
 
