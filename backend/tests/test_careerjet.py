@@ -104,6 +104,7 @@ def test_careerjet_params_auth_and_mapping(db):
         and q["user_agent"] == ["UnjoblessBot/test"]
     )
     assert f.kw[0]["basic_auth"] == ("cj-key", "")
+    assert f.kw[0]["extra_headers"] == {"Referer": "https://unjobless-id.vercel.app/"}
     for vid in out.new_version_ids:
         process_version(db, vid, use_ai=False)
     v = db.query(JobVacancy).filter_by(title="Magang Data Analyst").one()
