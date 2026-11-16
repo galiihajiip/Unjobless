@@ -198,6 +198,7 @@ def execute_run(
         cursor=cursor,
         fetcher=fetcher,
         get_secret=get_secret,
+        max_items=info.max_items_per_run,
         is_cancelled=cancelled,
         log=log.bind(source=source.key, run=run.id),
         source_domain=source.domain,
