@@ -219,6 +219,18 @@ def execute_run(
         connector = connector_cls()
         for n, item in enumerate(connector.collect(ctx), start=1):
             run.discovered += 1
+            if item.listing_only and item.native_id:
+                from unjobless.db.models import RawSourceDocument
+
+                doc = db.execute(
+                    select(RawSourceDocument).where(RawSourceDocument.source_id == source.id, RawSourceDocument.source_native_id == item.native_id)
+                ).scalar_one_or_none()
+                if doc is not None:
+                    doc.last_seen_in_listing_at = doc.last_collected_at = utcnow()
+                    seen_docs.add(doc.id)
+                    unchanged_docs.append(doc.id)
+                    run.unchanged += 1
+                    continue
             try:
                 with db.begin_nested():
                     res = store_item(db, source, item)
