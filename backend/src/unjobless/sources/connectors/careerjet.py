@@ -109,6 +109,7 @@ class CareerjetConnector(Connector):
         # earlier run, the rest of that search is older and is skipped.
         known: set[str] = set((ctx.cursor or {}).get("seen") or [])
         seen_now: list[str] = []
+        yielded: set[str] = set()
         for search in cfg.searches:
             for page in range(1, (search.pages or cfg.pages_per_search) + 1):
                 ctx.check_cancel()
@@ -162,12 +163,18 @@ class CareerjetConnector(Connector):
                 page_known = 0
                 for j in jobs:
                     url = j.get("url")
-                    native = hashlib.sha256(
-                        (url or f"{j.get('title')}|{j.get('company')}|{j.get('date')}").encode()
-                    ).hexdigest()[:32]
-                    seen_now.append(native)
+                    # Careerjet issues a new tracking URL for the same job on every search/page and the
+                    # description is a query-dependent snippet, so identity comes from the stable fields.
+                    ident = "|".join(
+                        str(j.get(k) or "").strip().lower() for k in ("title", "company", "locations", "date")
+                    )
+                    native = hashlib.sha256(ident.encode()).hexdigest()[:32]
                     if native in known:
                         page_known += 1
+                    if native in yielded:
+                        continue
+                    yielded.add(native)
+                    seen_now.append(native)
                     text = html_to_text(j.get("description") or "")
                     sal = None
                     if j.get("salary_min") or j.get("salary_max"):
