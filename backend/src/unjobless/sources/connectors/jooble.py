@@ -49,6 +49,8 @@ class JoobleConfig(BaseModel):
             JoobleSearch(keywords="internship", location="Indonesia"),
             JoobleSearch(keywords="fresh graduate", location="Indonesia"),
             JoobleSearch(keywords="management trainee", location="Indonesia"),
+            JoobleSearch(keywords="intern", location="Jakarta"),
+            JoobleSearch(keywords="lulusan baru", location="Indonesia"),
         ],
         max_length=20,
     )
@@ -73,7 +75,7 @@ class JoobleConnector(Connector):
         terms_url="https://jooble.org/info/terms",
         config_model=JoobleConfig,
         auth_required=True,
-        default_schedule_seconds=3 * 3600,
+        default_schedule_seconds=4 * 3600,
         default_rate_limit_per_minute=10,
         supports_pagination=True,
         terms_review="Official API with a personal key; default quota 100 requests/day. Link to Jooble's job page and name Jooble as the source.",
