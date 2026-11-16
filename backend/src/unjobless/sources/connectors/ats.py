@@ -345,8 +345,23 @@ class AshbyConnector(Connector):
         ctx.listing_complete = True
 
 
-SR_EMPLOYMENT = {"permanent": "FULL_TIME", "full-time": "FULL_TIME", "part-time": "PART_TIME", "contract": "CONTRACT", "intern": "INTERNSHIP", "internship": "INTERNSHIP", "temporary": "TEMPORARY"}
-SR_SENIORITY = {"internship": "INTERN", "entry_level": "ENTRY", "associate": "JUNIOR", "mid_senior_level": "MID", "director": "MANAGER", "executive": "EXECUTIVE"}
+SR_EMPLOYMENT = {
+    "permanent": "FULL_TIME",
+    "full-time": "FULL_TIME",
+    "part-time": "PART_TIME",
+    "contract": "CONTRACT",
+    "intern": "INTERNSHIP",
+    "internship": "INTERNSHIP",
+    "temporary": "TEMPORARY",
+}
+SR_SENIORITY = {
+    "internship": "INTERN",
+    "entry_level": "ENTRY",
+    "associate": "JUNIOR",
+    "mid_senior_level": "MID",
+    "director": "MANAGER",
+    "executive": "EXECUTIVE",
+}
 
 
 @register
@@ -379,22 +394,43 @@ class SmartRecruitersConnector(Connector):
             content = page.get("content") or []
             for j in content:
                 loc = j.get("location") or {}
-                loc_text = ", ".join(x for x in [loc.get("city"), loc.get("region"), (loc.get("country") or "").upper()] if x)
+                loc_text = ", ".join(
+                    x for x in [loc.get("city"), loc.get("region"), (loc.get("country") or "").upper()] if x
+                )
                 remote = bool(loc.get("remote"))
-                if not location_ok(cfg, [loc_text, "indonesia" if (loc.get("country") or "").lower() == "id" else None, "remote" if remote else None]):
+                if not location_ok(
+                    cfg,
+                    [
+                        loc_text,
+                        "indonesia" if (loc.get("country") or "").lower() == "id" else None,
+                        "remote" if remote else None,
+                    ],
+                ):
                     continue
                 pid = str(j["id"])
                 released = str(j.get("releasedDate") or "")
                 seen[pid] = released
                 if known.get(pid) == released:
                     # Unchanged posting: re-emit a light item so the raw store records it as seen (no detail call).
-                    yield CollectedItem(native_id=pid, url=None, content_type="application/json", raw_text="", title=j.get("name"), listing_only=True)
+                    yield CollectedItem(
+                        native_id=pid,
+                        url=None,
+                        content_type="application/json",
+                        raw_text="",
+                        title=j.get("name"),
+                        listing_only=True,
+                    )
                     continue
                 detail = _get_json(ctx, f"{base}/{pid}")
                 sections = (detail.get("jobAd") or {}).get("sections") or {}
                 text = "\n\n".join(
                     f"{(sections.get(k) or {}).get('title') or k}\n{html_to_text((sections.get(k) or {}).get('text') or '')}"
-                    for k in ("jobDescription", "qualifications", "additionalInformation", "companyDescription")
+                    for k in (
+                        "jobDescription",
+                        "qualifications",
+                        "additionalInformation",
+                        "companyDescription",
+                    )
                     if (sections.get(k) or {}).get("text")
                 )
                 emp = ((j.get("typeOfEmployment") or {}).get("label") or "").lower()
@@ -411,7 +447,17 @@ class SmartRecruitersConnector(Connector):
                     industry=(j.get("industry") or {}).get("label"),
                     description_text=text,
                 )
-                yield _item(pid, detail.get("postingUrl"), detail.get("applyUrl"), j.get("name") or "", text, structured, _iso(j.get("releasedDate")), (j.get("language") or {}).get("code"), detail)
+                yield _item(
+                    pid,
+                    detail.get("postingUrl"),
+                    detail.get("applyUrl"),
+                    j.get("name") or "",
+                    text,
+                    structured,
+                    _iso(j.get("releasedDate")),
+                    (j.get("language") or {}).get("code"),
+                    detail,
+                )
             offset += len(content)
             if not content or offset >= int(page.get("totalFound") or 0) or offset >= 1000:
                 break
