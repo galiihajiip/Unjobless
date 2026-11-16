@@ -77,10 +77,19 @@ class TelegramConfig(BaseModel):
         return out
 
 
+LEAD_SYMBOLS = re.compile(r"^[\W_]+(?=\w)", re.U)  # emoji / bullets / markdown marks before the first word
+
+
+def _tidy_line(line: str) -> str:
+    line = re.sub(r"(?<!\w)[*_~]{1,2}|[*_~]{1,2}(?!\w)", "", line)  # Telegram/WhatsApp *bold* _italic_
+    return LEAD_SYMBOLS.sub("", line.strip()).strip()
+
+
 def _text(node: Any) -> str:
     html = node.html or ""
     html = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
-    return clean_text(LexborHTMLParser(html).text(deep=True, separator=""))
+    raw = LexborHTMLParser(html).text(deep=True, separator="")
+    return clean_text("\n".join(_tidy_line(x) for x in raw.splitlines()))
 
 
 def parse_page(html: str, channel: str) -> list[dict[str, Any]]:
