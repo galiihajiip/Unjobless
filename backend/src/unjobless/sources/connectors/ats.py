@@ -127,8 +127,10 @@ class GreenhouseConnector(Connector):
         data = _get_json(ctx, f"https://boards-api.greenhouse.io/v1/boards/{cfg.board}/jobs?content=true")
         for j in data.get("jobs", []):
             ctx.check_cancel()
-            text = html_to_text(str(j.get("content") or ""))
             loc = (j.get("location") or {}).get("name")
+            if not location_ok(cfg, [loc]):
+                continue
+            text = html_to_text(str(j.get("content") or ""))
             structured = _common(
                 title=j.get("title"),
                 company=j.get("company_name") or cfg.company_name,
@@ -292,6 +294,8 @@ class AshbyConnector(Connector):
                 if salary:
                     break
             locs = [j.get("location")] + [s.get("location") for s in j.get("secondaryLocations") or []]
+            if not location_ok(cfg, [*locs, "remote" if j.get("isRemote") else None]):
+                continue
             wp = str(j.get("workplaceType") or "").upper()
             structured = _common(
                 title=j.get("title"),
