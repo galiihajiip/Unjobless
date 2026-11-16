@@ -89,6 +89,12 @@ PACK: list[dict[str, Any]] = [
         "connector_type": "remoteok_feed",
         "config": {},
     },
+    {
+        "key": "telegram-loker",
+        "name": "Telegram loker & magang channels",
+        "connector_type": "telegram_channel",
+        "config": {},
+    },
 ]
 
 
