@@ -78,6 +78,7 @@ class JoobleConnector(Connector):
         default_schedule_seconds=4 * 3600,
         default_rate_limit_per_minute=10,
         supports_pagination=True,
+        max_items_per_run=4000,
         terms_review="Official API with a personal key; default quota 100 requests/day. Link to Jooble's job page and name Jooble as the source.",
         attribution="Link to the Jooble job page and name Jooble as the source.",
     )
