@@ -44,6 +44,19 @@ class BoardConfig(BaseModel):
     company_name: str | None = Field(
         default=None, max_length=200, description="Display name if the API omits it."
     )
+    location_keywords: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+        description="Only keep jobs whose location contains one of these words (e.g. Indonesia, Jakarta, Remote). Empty = keep all.",
+    )
+
+
+def location_ok(cfg: Any, locations: list[str | None]) -> bool:
+    kws = [k.lower() for k in getattr(cfg, "location_keywords", []) or [] if k]
+    if not kws:
+        return True
+    text = " ".join(x for x in locations if x).lower()
+    return any(k in text for k in kws)
 
 
 def _get_json(ctx: CollectContext, url: str) -> Any:
