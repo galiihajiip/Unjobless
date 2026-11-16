@@ -9,6 +9,7 @@ Jobs are aggregator listings → *Likely open*.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from collections.abc import Iterator
@@ -119,10 +120,8 @@ class CareerjetConnector(Connector):
                 except FetchFailed as e:
                     raise RuntimeError(e.message) from e
                 body: dict[str, Any] = {}
-                try:
+                with contextlib.suppress(json.JSONDecodeError):
                     body = json.loads(res.body or b"{}")
-                except json.JSONDecodeError:
-                    pass
                 if res.status_code in (401, 403):
                     msg = str(body.get("error") or body.get("message") or f"HTTP {res.status_code}")
                     hint = (
