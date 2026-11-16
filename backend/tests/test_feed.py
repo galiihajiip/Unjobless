@@ -20,16 +20,24 @@ def client(engine, clean_db):
     with session_scope() as db:
         for i in range(60):
             v = JobVacancy(
-                title=f"{'Data' if i % 2 else 'Design'} Intern {i}", normalized_title=f"intern {i}",
+                title=f"{'Data' if i % 2 else 'Design'} Intern {i}",
+                normalized_title=f"intern {i}",
                 verification_status=V.VERIFIED_OPEN if i % 5 else V.EXPIRED,
                 employment_type=EmploymentType.INTERNSHIP if i % 3 else EmploymentType.FULL_TIME,
                 work_arrangement=WorkArrangement.REMOTE if i % 4 == 0 else WorkArrangement.ONSITE,
-                description="magang jakarta sql" if i % 2 else "design figma bandung", data_confidence=(i % 10) / 10,
+                description="magang jakarta sql" if i % 2 else "design figma bandung",
+                data_confidence=(i % 10) / 10,
             )
             db.add(v)
             db.flush()
             db.add(JobLocation(vacancy_id=v.id, raw="x", city="Jakarta" if i % 2 else "Bandung"))
-            db.add(JobSkill(vacancy_id=v.id, skill="SQL" if i % 2 else "Figma", normalized_skill="sql" if i % 2 else "figma"))
+            db.add(
+                JobSkill(
+                    vacancy_id=v.id,
+                    skill="SQL" if i % 2 else "Figma",
+                    normalized_skill="sql" if i % 2 else "figma",
+                )
+            )
     return c
 
 
@@ -45,7 +53,9 @@ def test_default_hides_expired(client):
 def test_filters_combine_with_and(client):
     r = client.get("/api/vacancies?limit=100&city=Jakarta&employment_type=INTERNSHIP&skill=SQL")
     items = r.json()["items"]
-    assert items and all(x["employment_type"] == "INTERNSHIP" and x["title"].startswith("Data") for x in items)
+    assert items and all(
+        x["employment_type"] == "INTERNSHIP" and x["title"].startswith("Data") for x in items
+    )
     r2 = client.get("/api/vacancies?limit=100&city=Jakarta&skill=Figma")
     assert r2.json()["total"] == 0
 
@@ -76,7 +86,9 @@ def test_save_dismiss_and_hide_dismissed(client):
 
 def test_owner_status_correction_recorded(client):
     vid = ids(client.get("/api/vacancies?limit=1"))[0]
-    r = client.post(f"/api/vacancies/{vid}/status", json={"status": "CLOSED", "reason": "Company confirmed it is filled"})
+    r = client.post(
+        f"/api/vacancies/{vid}/status", json={"status": "CLOSED", "reason": "Company confirmed it is filled"}
+    )
     assert r.json()["status"] == "CLOSED"
     hist = client.get(f"/api/vacancies/{vid}").json()["history"]
     assert hist[0]["actor"] == "USER" and hist[0]["to"] == "CLOSED"
