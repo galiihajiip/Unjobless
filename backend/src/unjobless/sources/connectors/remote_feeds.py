@@ -20,16 +20,33 @@ from unjobless.sources.connectors.ats import _get_json, _iso
 from unjobless.sources.contract import CollectContext, CollectedItem, Connector, ConnectorInfo
 from unjobless.sources.registry import register
 
-OPEN_TO_INDONESIA = ["worldwide", "anywhere", "global", "indonesia", "asia", "apac", "southeast asia", "south east asia", "sea", "emea/apac", "remote"]
+OPEN_TO_INDONESIA = [
+    "worldwide",
+    "anywhere",
+    "global",
+    "indonesia",
+    "asia",
+    "apac",
+    "southeast asia",
+    "south east asia",
+    "sea",
+    "emea/apac",
+    "remote",
+]
 
 
 class RemoteFeedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     allowed_regions: list[str] = Field(
-        default_factory=lambda: list(OPEN_TO_INDONESIA), max_length=40,
+        default_factory=lambda: list(OPEN_TO_INDONESIA),
+        max_length=40,
         description="Keep jobs with no location restriction or whose restriction mentions one of these.",
     )
-    keywords: list[str] = Field(default_factory=list, max_length=30, description="Optional: only keep jobs whose title/category contains one of these (e.g. intern, data).")
+    keywords: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+        description="Optional: only keep jobs whose title/category contains one of these (e.g. intern, data).",
+    )
     max_items: int = Field(default=300, ge=10, le=2000)
 
 
@@ -53,11 +70,28 @@ def _structured(provenance: str, **kw: Any) -> dict[str, Any]:
     return {"@type": "UnjoblessJob", "provenance": provenance, "work_arrangement": "REMOTE", **kw}
 
 
-def _emit(native_id: str, url: str | None, apply_url: str | None, title: str, text: str, structured: dict[str, Any], published: datetime | None, raw: Any, feed: str) -> CollectedItem:
+def _emit(
+    native_id: str,
+    url: str | None,
+    apply_url: str | None,
+    title: str,
+    text: str,
+    structured: dict[str, Any],
+    published: datetime | None,
+    raw: Any,
+    feed: str,
+) -> CollectedItem:
     return CollectedItem(
-        native_id=native_id[:300], url=url, application_url=apply_url, content_type="application/json",
-        raw_text=json.dumps(raw, ensure_ascii=False, sort_keys=True, default=str), extracted_text=text, title=title,
-        published_at=published, structured=[structured], metadata={"feed": feed, "attribution": f"via {feed}"},
+        native_id=native_id[:300],
+        url=url,
+        application_url=apply_url,
+        content_type="application/json",
+        raw_text=json.dumps(raw, ensure_ascii=False, sort_keys=True, default=str),
+        extracted_text=text,
+        title=title,
+        published_at=published,
+        structured=[structured],
+        metadata={"feed": feed, "attribution": f"via {feed}"},
     )
 
 
@@ -85,26 +119,69 @@ class HimalayasConnector(Connector):
         kept = scanned = 0
         while kept < cfg.max_items and scanned < 5000:
             ctx.check_cancel()
-            data = _get_json(ctx, "https://himalayas.app/jobs/api?limit=100" + (f"&cursor={cursor}" if cursor else ""))
+            data = _get_json(
+                ctx, "https://himalayas.app/jobs/api?limit=100" + (f"&cursor={cursor}" if cursor else "")
+            )
             jobs = data.get("jobs") or []
             for j in jobs:
                 scanned += 1
-                if not region_ok(cfg, j.get("locationRestrictions") or []) or not keyword_ok(cfg, j.get("title"), " ".join(j.get("categories") or [])):
+                if not region_ok(cfg, j.get("locationRestrictions") or []) or not keyword_ok(
+                    cfg, j.get("title"), " ".join(j.get("categories") or [])
+                ):
                     continue
                 kept += 1
                 text = html_to_text(j.get("description") or "") or j.get("excerpt") or ""
                 pub = datetime.fromtimestamp(int(j["pubDate"]), tz=UTC) if j.get("pubDate") else None
-                exp = datetime.fromtimestamp(int(j["expiryDate"]), tz=UTC).date().isoformat() if j.get("expiryDate") else None
-                sal = {"min": j.get("minSalary"), "max": j.get("maxSalary"), "currency": j.get("currency"), "period": {"annual": "YEAR", "monthly": "MONTH", "hourly": "HOUR"}.get(str(j.get("salaryPeriod") or ""))} if j.get("minSalary") or j.get("maxSalary") else None
+                exp = (
+                    datetime.fromtimestamp(int(j["expiryDate"]), tz=UTC).date().isoformat()
+                    if j.get("expiryDate")
+                    else None
+                )
+                sal = (
+                    {
+                        "min": j.get("minSalary"),
+                        "max": j.get("maxSalary"),
+                        "currency": j.get("currency"),
+                        "period": {"annual": "YEAR", "monthly": "MONTH", "hourly": "HOUR"}.get(
+                            str(j.get("salaryPeriod") or "")
+                        ),
+                    }
+                    if j.get("minSalary") or j.get("maxSalary")
+                    else None
+                )
                 regions = j.get("locationRestrictions") or ["Worldwide"]
                 structured = _structured(
-                    "himalayas_api", title=j.get("title"), company=j.get("companyName"), locations=[f"Remote ({', '.join(regions)})"],
-                    employment_type={"Full Time": "FULL_TIME", "Part Time": "PART_TIME", "Contractor": "CONTRACT", "Intern": "INTERNSHIP", "Internship": "INTERNSHIP", "Temporary": "TEMPORARY"}.get(j.get("employmentType") or ""),
-                    application_url=j.get("applicationLink"), posting_url=j.get("guid"), published_at=pub.isoformat() if pub else None,
-                    salary=sal, remote_eligible_countries=[r for r in regions if len(r) > 2], description_text=text,
+                    "himalayas_api",
+                    title=j.get("title"),
+                    company=j.get("companyName"),
+                    locations=[f"Remote ({', '.join(regions)})"],
+                    employment_type={
+                        "Full Time": "FULL_TIME",
+                        "Part Time": "PART_TIME",
+                        "Contractor": "CONTRACT",
+                        "Intern": "INTERNSHIP",
+                        "Internship": "INTERNSHIP",
+                        "Temporary": "TEMPORARY",
+                    }.get(j.get("employmentType") or ""),
+                    application_url=j.get("applicationLink"),
+                    posting_url=j.get("guid"),
+                    published_at=pub.isoformat() if pub else None,
+                    salary=sal,
+                    remote_eligible_countries=[r for r in regions if len(r) > 2],
+                    description_text=text,
                 )
                 # Himalayas expiry is the listing's own expiry, not an employer deadline: kept as metadata only.
-                item = _emit(j.get("guid") or j.get("applicationLink") or j["title"], j.get("guid"), j.get("applicationLink"), j.get("title") or "", text, structured, pub, j, "Himalayas")
+                item = _emit(
+                    j.get("guid") or j.get("applicationLink") or j["title"],
+                    j.get("guid"),
+                    j.get("applicationLink"),
+                    j.get("title") or "",
+                    text,
+                    structured,
+                    pub,
+                    j,
+                    "Himalayas",
+                )
                 item.metadata["listing_expiry"] = exp
                 yield item
                 if kept >= cfg.max_items:
@@ -137,15 +214,39 @@ class RemotiveConnector(Connector):
         kept = 0
         for j in data.get("jobs") or []:
             loc = j.get("candidate_required_location") or ""
-            if not region_ok(cfg, [x for x in loc.replace(";", ",").split(",")]) or not keyword_ok(cfg, j.get("title"), j.get("category")):
+            if not region_ok(cfg, [x for x in loc.replace(";", ",").split(",")]) or not keyword_ok(
+                cfg, j.get("title"), j.get("category")
+            ):
                 continue
             text = html_to_text(j.get("description") or "")
             structured = _structured(
-                "remotive_api", title=j.get("title"), company=j.get("company_name"), locations=[f"Remote ({loc or 'Worldwide'})"],
-                employment_type={"full_time": "FULL_TIME", "part_time": "PART_TIME", "contract": "CONTRACT", "internship": "INTERNSHIP", "freelance": "FREELANCE"}.get(j.get("job_type") or ""),
-                application_url=j.get("url"), posting_url=j.get("url"), published_at=j.get("publication_date"), description_text=text,
+                "remotive_api",
+                title=j.get("title"),
+                company=j.get("company_name"),
+                locations=[f"Remote ({loc or 'Worldwide'})"],
+                employment_type={
+                    "full_time": "FULL_TIME",
+                    "part_time": "PART_TIME",
+                    "contract": "CONTRACT",
+                    "internship": "INTERNSHIP",
+                    "freelance": "FREELANCE",
+                }.get(j.get("job_type") or ""),
+                application_url=j.get("url"),
+                posting_url=j.get("url"),
+                published_at=j.get("publication_date"),
+                description_text=text,
             )
-            yield _emit(str(j["id"]), j.get("url"), j.get("url"), j.get("title") or "", text, structured, _iso(j.get("publication_date")), j, "Remotive")
+            yield _emit(
+                str(j["id"]),
+                j.get("url"),
+                j.get("url"),
+                j.get("title") or "",
+                text,
+                structured,
+                _iso(j.get("publication_date")),
+                j,
+                "Remotive",
+            )
             kept += 1
             if kept >= cfg.max_items:
                 break
@@ -175,16 +276,36 @@ class RemoteOKConnector(Connector):
         kept = 0
         for j in data[1:] if isinstance(data, list) else []:
             loc = j.get("location") or ""
-            if not region_ok(cfg, [x for x in loc.replace(";", ",").split(",")]) or not keyword_ok(cfg, j.get("position"), " ".join(j.get("tags") or [])):
+            if not region_ok(cfg, [x for x in loc.replace(";", ",").split(",")]) or not keyword_ok(
+                cfg, j.get("position"), " ".join(j.get("tags") or [])
+            ):
                 continue
             text = html_to_text(j.get("description") or "")
             smin, smax = j.get("salary_min") or None, j.get("salary_max") or None
             structured = _structured(
-                "remoteok_api", title=j.get("position"), company=j.get("company"), locations=[f"Remote ({loc or 'Worldwide'})"],
-                application_url=j.get("apply_url") or j.get("url"), posting_url=j.get("url"), published_at=j.get("date"),
-                salary={"min": smin, "max": smax, "currency": "USD", "period": "YEAR"} if smin or smax else None, description_text=text,
+                "remoteok_api",
+                title=j.get("position"),
+                company=j.get("company"),
+                locations=[f"Remote ({loc or 'Worldwide'})"],
+                application_url=j.get("apply_url") or j.get("url"),
+                posting_url=j.get("url"),
+                published_at=j.get("date"),
+                salary={"min": smin, "max": smax, "currency": "USD", "period": "YEAR"}
+                if smin or smax
+                else None,
+                description_text=text,
             )
-            yield _emit(str(j.get("id")), j.get("url"), j.get("apply_url") or j.get("url"), j.get("position") or "", text, structured, _iso(j.get("date")), j, "Remote OK")
+            yield _emit(
+                str(j.get("id")),
+                j.get("url"),
+                j.get("apply_url") or j.get("url"),
+                j.get("position") or "",
+                text,
+                structured,
+                _iso(j.get("date")),
+                j,
+                "Remote OK",
+            )
             kept += 1
             if kept >= cfg.max_items:
                 break
