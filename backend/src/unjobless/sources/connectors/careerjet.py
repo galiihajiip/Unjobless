@@ -119,6 +119,7 @@ class CareerjetConnector(Connector):
                         accept="application/json",
                         content_types=("application/json",),
                         basic_auth=(key, ""),
+                        extra_headers={"Referer": cfg.referer_url},
                     )
                 except BlockedURL as e:
                     raise SourceUnavailable(e.message) from e
