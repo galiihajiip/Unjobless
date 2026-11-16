@@ -219,7 +219,10 @@ def _auto_ingest(
             elif any(s.get("provenance") == "schema_org_jobposting" for s in version.structured_data or []):
                 status = V.LIKELY_OPEN
                 reason = "Published as structured JobPosting data on the employer's site."
-            elif source.collection_method == CollectionMethod.AGGREGATOR_API and source.policy_status == PolicyStatus.APPROVED:
+            elif (
+                source.collection_method == CollectionMethod.AGGREGATOR_API
+                and source.policy_status == PolicyStatus.APPROVED
+            ):
                 status = V.LIKELY_OPEN
                 reason = f"Currently listed by the {source.name} job feed (aggregator, not the employer's own site)."
             elif any(s.get("provenance") == "email_job_alert" for s in version.structured_data or []):
