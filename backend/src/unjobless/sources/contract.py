@@ -45,6 +45,7 @@ class ConnectorInfo:
     supports_discovery: bool = True
     supports_pagination: bool = False
     supports_incremental: bool = False
+    max_items_per_run: int = 500
     supports_health_check: bool = True
     content_types: tuple[str, ...] = ("application/json",)
     retry: RetryPolicy = field(default_factory=RetryPolicy)
