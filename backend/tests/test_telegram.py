@@ -127,3 +127,8 @@ def test_company_does_not_run_onto_next_line():
         COMPANY_RE.search("Rekrutmen PT Paguntaka Cahaya Nusantara\nPKWT").group(0)
         == "PT Paguntaka Cahaya Nusantara"
     )
+
+
+def test_fancy_unicode_letters_become_plain_text():
+    posts = parse_page(page("lokerx", [1]).replace("Lowongan Magang", "𝐋𝐎𝐖𝐎𝐍𝐆𝐀𝐍 𝑴𝒂𝒈𝒂𝒏𝒈"), "lokerx")
+    assert posts[0]["text"].startswith("LOWONGAN Magang Data Analyst")
