@@ -94,6 +94,7 @@ class CareerjetConnector(Connector):
         default_schedule_seconds=2 * 3600,
         default_rate_limit_per_minute=10,
         supports_pagination=True,
+        max_items_per_run=4000,
         terms_review="Official publisher API with your key; requests only from your declared server IP; link to Careerjet's job URL.",
         attribution="Link to the Careerjet job URL and name Careerjet as the source.",
     )
