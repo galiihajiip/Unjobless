@@ -6,12 +6,9 @@ Create Date: 2026-11-16 05:26:08.581944
 """
 
 from collections.abc import Sequence
-
-import sqlalchemy as sa
 from pathlib import Path
 
 from alembic import op
-
 
 revision: str = "7893af309bfe"
 down_revision: str | None = "7f119800a8be"
