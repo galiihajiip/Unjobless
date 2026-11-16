@@ -216,7 +216,13 @@ class SafeFetcher:
         content_types: Iterable[str] = DEFAULT_CONTENT_TYPES,
         extra_headers: dict[str, str] | None = None,
         max_bytes: int | None = None,
+        json_body: dict[str, object] | None = None,
     ) -> FetchResult:
+        """GET (or POST with a JSON body when `json_body` is given, e.g. documented search APIs).
+
+        All SSRF protections apply identically; POST requests never follow redirects.
+        """
+        method = "POST" if json_body is not None else "GET"
         allowed_types = tuple(content_types)
         cap = max_bytes or self.max_bytes
         started = time.monotonic()
@@ -247,7 +253,9 @@ class SafeFetcher:
                 self._event("timeout", target.host, "total_timeout")
                 raise FetchFailed("The page took too long to respond.", code="timeout")
             try:
-                req = self._client.build_request("GET", pinned_url, headers=headers, extensions=extensions)
+                req = self._client.build_request(
+                    method, pinned_url, headers=headers, extensions=extensions, json=json_body
+                )
                 resp = self._client.send(req, stream=True)
             except httpx.TimeoutException as exc:
                 self._event("timeout", target.host, "timeout")
@@ -256,6 +264,11 @@ class SafeFetcher:
                 self._event("error", target.host, type(exc).__name__)
                 raise FetchFailed("Could not connect to the site.", code="connect_failed") from exc
             try:
+                if resp.status_code in REDIRECT_CODES and method == "POST":
+                    raise FetchFailed(
+                        "The API answered with a redirect; not followed for POST requests.",
+                        code="bad_redirect",
+                    )
                 if resp.status_code in REDIRECT_CODES:
                     loc = resp.headers.get("location")
                     if not loc:
