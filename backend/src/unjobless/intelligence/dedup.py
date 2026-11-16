@@ -107,7 +107,18 @@ def _loc_key(text: str) -> str:
     )
 
 
+def _same_content(a: JobVacancy, b: JobVacancy) -> bool:
+    def n(x: str | None) -> str:
+        return " ".join((x or "").lower().split())
+
+    return bool(n(a.title)) and all(
+        n(getattr(a, f)) == n(getattr(b, f)) for f in ("title", "company_name", "location_text", "description")
+    )
+
+
 def _distinct_postings_same_source(db: Session, a: JobVacancy, b: JobVacancy) -> bool:
+    if _same_content(a, b):
+        return False  # identical content under a new id (aggregator tracking URLs) is a repost
     la = db.execute(
         select(JobVacancySource.source_id, JobVacancySource.source_native_id).where(
             JobVacancySource.vacancy_id == a.id
