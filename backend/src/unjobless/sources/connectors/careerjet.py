@@ -49,6 +49,11 @@ class CareerjetSearch(BaseModel):
 class CareerjetConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     locale_code: str = Field(default="id_ID", pattern=r"^[a-z]{2}_[A-Z]{2}$", description="Indonesia = id_ID")
+    referer_url: str = Field(
+        default="https://unjobless-id.vercel.app/",
+        max_length=300,
+        description="The website registered in your Careerjet publisher account (sent as the Referer header).",
+    )
     declared_ip: str = Field(
         min_length=3,
         max_length=45,
