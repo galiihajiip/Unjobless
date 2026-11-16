@@ -132,3 +132,28 @@ def test_company_does_not_run_onto_next_line():
 def test_fancy_unicode_letters_become_plain_text():
     posts = parse_page(page("lokerx", [1]).replace("Lowongan Magang", "𝐋𝐎𝐖𝐎𝐍𝐆𝐀𝐍 𝑴𝒂𝒈𝒂𝒏𝒈"), "lokerx")
     assert posts[0]["text"].startswith("LOWONGAN Magang Data Analyst")
+
+
+def test_one_timeout_is_retried(db):
+    from unjobless.core.errors import FetchFailed
+
+    class Flaky(FakeFetcher):
+        n = 0
+
+        def get(self, url, **kw):
+            if "t.me/s/" in url and self.n == 0:
+                self.n += 1
+                raise FetchFailed("The page took too long to respond.")
+            return super().get(url, **kw)
+
+    src = approved_source(
+        db,
+        key="tg3",
+        connector_type="telegram_channel",
+        config={"channels": ["lokerx"], "pages_per_channel": 1},
+    )
+    src.rate_limit_per_minute = 600
+    f = Flaky(dict([ROBOTS, ("https://t.me/s/lokerx", (200, "text/html", page("lokerx", range(1, 4))))]))
+    run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
+    runner.execute_run(db, run.id, fetcher=f)
+    assert run.status == RunStatus.SUCCEEDED and run.new == 3
