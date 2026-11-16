@@ -3,8 +3,9 @@
 import pytest
 
 from tests.helpers import FakeFetcher, approved_source
-from unjobless.db.models import OpportunitySignal
+from unjobless.db.models import JobVacancy, OpportunitySignal
 from unjobless.domain.enums import RunStatus, RunTrigger
+from unjobless.domain.enums import VerificationStatus as V
 from unjobless.intelligence.pipeline import process_version
 from unjobless.jobs import runner
 from unjobless.sources.connectors.telegram import TelegramConfig, parse_page
@@ -76,7 +77,13 @@ def test_backfill_then_incremental(db):
     assert out.status == RunStatus.SUCCEEDED and run.new == 40
     for vid in out.new_version_ids[:3]:
         process_version(db, vid, use_ai=False)
-    assert db.query(OpportunitySignal).count() >= 1
+    v = db.query(JobVacancy).first()
+    assert db.query(OpportunitySignal).count() >= 1 or v is not None, "post was neither a vacancy nor a lead"
+    if v is not None:
+        assert v.verification_status in (
+            V.NEEDS_REVIEW,
+            V.NEW_UNREVIEWED,
+        )  # social posts are never auto-verified
     # Next run: two new posts; the connector stops at the posts it already has.
     f2 = FakeFetcher(
         dict([ROBOTS, ("https://t.me/s/lokerx", (200, "text/html", page("lokerx", range(23, 43))))])
