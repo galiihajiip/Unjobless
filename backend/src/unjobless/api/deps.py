@@ -35,7 +35,9 @@ def get_db() -> Iterator[Session]:
         session.close()
 
 
-DB = Annotated[Session, Depends(get_db)]
+# scope="function": commit when the endpoint returns, *before* the response is sent. Otherwise a client
+# can receive e.g. its new session cookie and send the next request before the login is committed (401).
+DB = Annotated[Session, Depends(get_db, scope="function")]
 
 
 def current_session(request: Request, db: DB) -> OwnerSession | None:
