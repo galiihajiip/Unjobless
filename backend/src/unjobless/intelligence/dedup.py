@@ -112,7 +112,8 @@ def _same_content(a: JobVacancy, b: JobVacancy) -> bool:
         return " ".join((x or "").lower().split())
 
     return bool(n(a.title)) and all(
-        n(getattr(a, f)) == n(getattr(b, f)) for f in ("title", "company_name", "location_text", "description")
+        n(getattr(a, f)) == n(getattr(b, f))
+        for f in ("title", "company_name", "location_text", "description")
     )
 
 
