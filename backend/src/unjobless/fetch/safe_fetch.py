@@ -232,7 +232,7 @@ class SafeFetcher:
         safe_extra = {
             k: v
             for k, v in (extra_headers or {}).items()
-            if k.lower() in {"if-none-match", "if-modified-since", "accept-language"}
+            if k.lower() in {"if-none-match", "if-modified-since", "accept-language", "referer"}
         }
         for _hop in range(self.max_redirects + 1):
             try:
