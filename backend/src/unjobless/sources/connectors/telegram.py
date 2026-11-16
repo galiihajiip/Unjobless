@@ -218,7 +218,10 @@ class TelegramChannelConnector(Connector):
             url = f"{BASE}/s/{ch}"
             for _ in range(cfg.pages_per_channel if not last else 20):
                 try:
-                    res = self._get(ctx, url)
+                    try:
+                        res = self._get(ctx, url)
+                    except FetchFailed:
+                        res = self._get(ctx, url)  # one retry: t.me previews occasionally time out
                 except FetchFailed as e:
                     ctx.log and ctx.log.warning("telegram_fetch_failed", channel=ch, error=e.message)
                     failed.append(ch)
