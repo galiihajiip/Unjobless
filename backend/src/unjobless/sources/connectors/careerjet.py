@@ -44,6 +44,7 @@ class CareerjetSearch(BaseModel):
         default="",
         description="i = internship/training, p = permanent, c = contract, t = temporary, v = volunteering",
     )
+    pages: int | None = Field(default=None, ge=1, le=10, description="Overrides pages_per_search.")
 
 
 class CareerjetConfig(BaseModel):
@@ -61,14 +62,18 @@ class CareerjetConfig(BaseModel):
     )
     searches: list[CareerjetSearch] = Field(
         default_factory=lambda: [
-            CareerjetSearch(keywords="", contract_type="i"),
-            CareerjetSearch(keywords="magang"),
-            CareerjetSearch(keywords="internship"),
-            CareerjetSearch(keywords="fresh graduate"),
+            CareerjetSearch(keywords="", contract_type="i", pages=10),
+            CareerjetSearch(keywords="internship", pages=8),
+            CareerjetSearch(keywords="intern", pages=4),
+            CareerjetSearch(keywords="magang", pages=2),
+            CareerjetSearch(keywords="fresh graduate", pages=4),
+            CareerjetSearch(keywords="management trainee", pages=2),
+            CareerjetSearch(keywords="entry level", pages=2),
+            CareerjetSearch(keywords="junior", pages=3),
         ],
         max_length=20,
     )
-    pages_per_search: int = Field(default=2, ge=1, le=10)
+    pages_per_search: int = Field(default=3, ge=1, le=10)
     page_size: int = Field(default=100, ge=1, le=100)
 
 
@@ -98,7 +103,7 @@ class CareerjetConnector(Connector):
             raise SourceUnavailable("Set your Careerjet API key as this source's credential first.")
         ua = getattr(ctx.fetcher, "user_agent", "UnjoblessBot")
         for search in cfg.searches:
-            for page in range(1, cfg.pages_per_search + 1):
+            for page in range(1, (search.pages or cfg.pages_per_search) + 1):
                 ctx.check_cancel()
                 params = {
                     "locale_code": cfg.locale_code,
