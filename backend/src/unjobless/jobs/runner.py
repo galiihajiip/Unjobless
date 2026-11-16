@@ -230,7 +230,7 @@ def execute_run(
                     seen_docs.add(doc.id)
                     unchanged_docs.append(doc.id)
                     run.unchanged += 1
-                    continue
+                continue  # never store listing-only placeholders
             try:
                 with db.begin_nested():
                     res = store_item(db, source, item)
