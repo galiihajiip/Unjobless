@@ -44,7 +44,7 @@ class CareerjetSearch(BaseModel):
         default="",
         description="i = internship/training, p = permanent, c = contract, t = temporary, v = volunteering",
     )
-    pages: int | None = Field(default=None, ge=1, le=10, description="Overrides pages_per_search.")
+    pages: int | None = Field(default=None, ge=1, le=50, description="Overrides pages_per_search.")
 
 
 class CareerjetConfig(BaseModel):
@@ -62,19 +62,19 @@ class CareerjetConfig(BaseModel):
     )
     searches: list[CareerjetSearch] = Field(
         default_factory=lambda: [
-            CareerjetSearch(keywords="", contract_type="i", pages=10),
-            CareerjetSearch(keywords="internship", pages=8),
-            CareerjetSearch(keywords="intern", pages=4),
-            CareerjetSearch(keywords="magang", pages=2),
-            CareerjetSearch(keywords="fresh graduate", pages=4),
-            CareerjetSearch(keywords="management trainee", pages=2),
-            CareerjetSearch(keywords="entry level", pages=2),
-            CareerjetSearch(keywords="junior", pages=3),
+            CareerjetSearch(keywords="", contract_type="i", pages=40),
+            CareerjetSearch(keywords="internship", pages=40),
+            CareerjetSearch(keywords="intern", pages=20),
+            CareerjetSearch(keywords="magang", pages=5),
+            CareerjetSearch(keywords="fresh graduate", pages=20),
+            CareerjetSearch(keywords="management trainee", pages=5),
+            CareerjetSearch(keywords="entry level", pages=10),
+            CareerjetSearch(keywords="junior", pages=15),
         ],
         max_length=20,
     )
-    pages_per_search: int = Field(default=3, ge=1, le=10)
-    page_size: int = Field(default=100, ge=1, le=100)
+    pages_per_search: int = Field(default=10, ge=1, le=50)
+    page_size: int = Field(default=20, ge=1, le=100, description="Careerjet currently returns at most 20 per page.")
 
 
 @register
@@ -102,6 +102,10 @@ class CareerjetConnector(Connector):
         if not key:
             raise SourceUnavailable("Set your Careerjet API key as this source's credential first.")
         ua = getattr(ctx.fetcher, "user_agent", "UnjoblessBot")
+        # Incremental: results are sorted by date, so once a whole page is already known from an
+        # earlier run, the rest of that search is older and is skipped.
+        known: set[str] = set((ctx.cursor or {}).get("seen") or [])
+        seen_now: list[str] = []
         for search in cfg.searches:
             for page in range(1, (search.pages or cfg.pages_per_search) + 1):
                 ctx.check_cancel()
@@ -152,11 +156,15 @@ class CareerjetConnector(Connector):
                 if body.get("type") != "JOBS":
                     break  # LOCATIONS / no results
                 jobs = body.get("jobs") or []
+                page_known = 0
                 for j in jobs:
                     url = j.get("url")
                     native = hashlib.sha256(
                         (url or f"{j.get('title')}|{j.get('company')}|{j.get('date')}").encode()
                     ).hexdigest()[:32]
+                    seen_now.append(native)
+                    if native in known:
+                        page_known += 1
                     text = html_to_text(j.get("description") or "")
                     sal = None
                     if j.get("salary_min") or j.get("salary_max"):
@@ -196,5 +204,8 @@ class CareerjetConnector(Connector):
                         structured=[structured],
                         metadata={"via": "careerjet", "search": search.keywords or search.contract_type},
                     )
-                if page >= int(body.get("pages") or 1) or len(jobs) < cfg.page_size:
+                if not jobs or page >= int(body.get("pages") or 1):
                     break
+                if known and page_known == len(jobs):
+                    break
+        ctx.set_cursor({"seen": list(dict.fromkeys(seen_now + list(known)))[:8000]})
