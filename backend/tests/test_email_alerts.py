@@ -64,7 +64,9 @@ def test_parse_alert_extracts_jobs_and_strips_tracking():
 
 
 def test_requires_secret(db):
-    src = approved_source(db, key="mail", connector_type="email_job_alerts", config={"username": "alerts@example.com"})
+    src = approved_source(
+        db, key="mail", connector_type="email_job_alerts", config={"username": "alerts@example.com"}
+    )
     run = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     runner.execute_run(db, run.id)
     assert run.status == RunStatus.FAILED and run.error_code == "unavailable"
@@ -74,8 +76,15 @@ def test_alerts_become_vacancies_incrementally(db):
     from unjobless.core.crypto import encrypt_secret
     from unjobless.db.models import EncryptedSecret
 
-    src = approved_source(db, key="mail", connector_type="email_job_alerts", config={"username": "alerts@example.com"})
-    sec = EncryptedSecret(purpose="source-secret", ciphertext=encrypt_secret("app-pass-1234", purpose="source-secret"), fingerprint="f", hint="…1234")
+    src = approved_source(
+        db, key="mail", connector_type="email_job_alerts", config={"username": "alerts@example.com"}
+    )
+    sec = EncryptedSecret(
+        purpose="source-secret",
+        ciphertext=encrypt_secret("app-pass-1234", purpose="source-secret"),
+        fingerprint="f",
+        hint="…1234",
+    )
     db.add(sec)
     db.flush()
     src.secret_id = sec.id
@@ -88,7 +97,9 @@ def test_alerts_become_vacancies_incrementally(db):
     titles = sorted(v.title for v in db.query(JobVacancy))
     assert titles == ["Data Analyst Intern", "UI/UX Designer Intern"]
     v = db.query(JobVacancy).filter_by(title="Data Analyst Intern").one()
-    assert v.application_url.startswith("https://glints.com/") and v.verification_status.value != "VERIFIED_OPEN"
+    assert (
+        v.application_url.startswith("https://glints.com/") and v.verification_status.value != "VERIFIED_OPEN"
+    )
     run2 = runner.enqueue_source_run(db, src, RunTrigger.MANUAL)
     runner.execute_run(db, run2.id)
     assert run2.discovered == 0  # cursor: only new mail next time
@@ -99,4 +110,10 @@ def test_private_imap_host_rejected(db):
     from unjobless.sources import service
 
     with pytest.raises(ValidationFailed):
-        service.create_source(db, key="m2", name="m", connector_type="email_job_alerts", config={"username": "a@b.co", "imap_host": "localhost"})
+        service.create_source(
+            db,
+            key="m2",
+            name="m",
+            connector_type="email_job_alerts",
+            config={"username": "a@b.co", "imap_host": "localhost"},
+        )
