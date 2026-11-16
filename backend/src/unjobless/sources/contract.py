@@ -72,6 +72,8 @@ class CollectedItem:
     metadata: dict[str, Any] = field(default_factory=dict)
     structured: list[dict[str, Any]] | None = None
     extracted_text: str | None = None
+    # True when the connector only confirms the item is still listed (unchanged); nothing is stored.
+    listing_only: bool = False
 
 
 @dataclass
