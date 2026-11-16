@@ -179,7 +179,7 @@ class EmailAlertsConnector(Connector):
         type="email_job_alerts",
         name="Job-alert mailbox (Glints, LinkedIn, JobStreet…)",
         category=SourceCategory.USER_DOCUMENT,
-        collection_method=CollectionMethod.OFFICIAL_API,
+        collection_method=CollectionMethod.EMAIL_ALERT,
         description=(
             "Reads job-alert e-mails that job sites send to your own mailbox (read-only, IMAP) and imports every job in them. "
             "Works for platforms that block bots. Subscribe to alerts on each site with this mailbox."
