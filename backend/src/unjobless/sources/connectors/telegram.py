@@ -190,9 +190,7 @@ class TelegramChannelConnector(Connector):
                         continue
                     link = f"{BASE}/{p['channel']}/{p['id']}"
                     external = next((x for x in p["links"] if "t.me/" not in x), None)
-                    body = text + (
-                        "\n\nLinks:\n" + "\n".join(p["links"]) if p["links"] else ""
-                    )
+                    body = text + ("\n\nLinks:\n" + "\n".join(p["links"]) if p["links"] else "")
                     yield CollectedItem(
                         native_id=f"{p['channel'].lower()}/{p['id']}",
                         url=link,
