@@ -219,6 +219,9 @@ def _auto_ingest(
             elif any(s.get("provenance") == "schema_org_jobposting" for s in version.structured_data or []):
                 status = V.LIKELY_OPEN
                 reason = "Published as structured JobPosting data on the employer's site."
+            elif any(s.get("provenance") == "email_job_alert" for s in version.structured_data or []):
+                status = V.LIKELY_OPEN
+                reason = f"Sent as an open job in a {(version.metadata_ or {}).get('platform', 'job site')} alert e-mail; not re-checked on the site."
             else:
                 status = (
                     sig.recommendation
