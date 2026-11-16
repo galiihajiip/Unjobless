@@ -208,6 +208,8 @@ class LeverConnector(Connector):
             cats = j.get("categories") or {}
             sal = j.get("salaryRange") or {}
             locs = list(dict.fromkeys([cats.get("location")] + list(cats.get("allLocations") or [])))
+            if not location_ok(cfg, [*locs, j.get("country"), j.get("workplaceType")]):
+                continue
             structured = _common(
                 title=j.get("text"),
                 company=cfg.company_name,
@@ -296,6 +298,8 @@ class AshbyConnector(Connector):
             locs = [j.get("location")] + [s.get("location") for s in j.get("secondaryLocations") or []]
             if not location_ok(cfg, [*locs, "remote" if j.get("isRemote") else None]):
                 continue
+            if not location_ok(cfg, [*locs, "remote" if j.get("isRemote") else None]):
+                continue
             wp = str(j.get("workplaceType") or "").upper()
             structured = _common(
                 title=j.get("title"),
@@ -326,3 +330,77 @@ class AshbyConnector(Connector):
                 j,
             )
         ctx.listing_complete = True
+
+
+SR_EMPLOYMENT = {"permanent": "FULL_TIME", "full-time": "FULL_TIME", "part-time": "PART_TIME", "contract": "CONTRACT", "intern": "INTERNSHIP", "internship": "INTERNSHIP", "temporary": "TEMPORARY"}
+SR_SENIORITY = {"internship": "INTERN", "entry_level": "ENTRY", "associate": "JUNIOR", "mid_senior_level": "MID", "director": "MANAGER", "executive": "EXECUTIVE"}
+
+
+@register
+class SmartRecruitersConnector(Connector):
+    info = ConnectorInfo(
+        type="smartrecruiters",
+        name="SmartRecruiters public postings",
+        category=SourceCategory.ATS_BOARD,
+        collection_method=CollectionMethod.ATS_PUBLIC_API,
+        description="Published jobs of one employer via the documented SmartRecruiters Posting API.",
+        documentation_url="https://developers.smartrecruiters.com/docs/posting-api",
+        terms_url="https://www.smartrecruiters.com/legal/",
+        config_model=BoardConfig,
+        default_schedule_seconds=3600,
+        default_rate_limit_per_minute=30,
+        supports_pagination=True,
+        supports_incremental=True,
+        terms_review="Public Posting API intended for publishing an employer's open jobs on other sites.",
+    )
+
+    def collect(self, ctx: CollectContext) -> Iterator[CollectedItem]:
+        cfg: Any = ctx.config
+        base = f"https://api.smartrecruiters.com/v1/companies/{cfg.board}/postings"
+        known: dict[str, str] = dict((ctx.cursor or {}).get("released", {}))
+        seen: dict[str, str] = {}
+        offset = 0
+        while True:
+            ctx.check_cancel()
+            page = _get_json(ctx, f"{base}?limit=100&offset={offset}")
+            content = page.get("content") or []
+            for j in content:
+                loc = j.get("location") or {}
+                loc_text = ", ".join(x for x in [loc.get("city"), loc.get("region"), (loc.get("country") or "").upper()] if x)
+                remote = bool(loc.get("remote"))
+                if not location_ok(cfg, [loc_text, "indonesia" if (loc.get("country") or "").lower() == "id" else None, "remote" if remote else None]):
+                    continue
+                pid = str(j["id"])
+                released = str(j.get("releasedDate") or "")
+                seen[pid] = released
+                if known.get(pid) == released:
+                    # Unchanged posting: re-emit a light item so the raw store records it as seen (no detail call).
+                    yield CollectedItem(native_id=pid, url=None, content_type="application/json", raw_text=json.dumps(j, sort_keys=True, default=str), title=j.get("name"), metadata={"listing_only": True})
+                    continue
+                detail = _get_json(ctx, f"{base}/{pid}")
+                sections = (detail.get("jobAd") or {}).get("sections") or {}
+                text = "\n\n".join(
+                    f"{(sections.get(k) or {}).get('title') or k}\n{html_to_text((sections.get(k) or {}).get('text') or '')}"
+                    for k in ("jobDescription", "qualifications", "additionalInformation", "companyDescription")
+                    if (sections.get(k) or {}).get("text")
+                )
+                emp = ((j.get("typeOfEmployment") or {}).get("label") or "").lower()
+                structured = _common(
+                    title=j.get("name"),
+                    company=(j.get("company") or {}).get("name") or cfg.company_name,
+                    locations=[loc_text + (" (remote)" if remote else "")] if loc_text else [],
+                    department=(j.get("function") or {}).get("label"),
+                    employment_type=next((v for k, v in SR_EMPLOYMENT.items() if k in emp), None),
+                    work_arrangement="REMOTE" if remote else None,
+                    application_url=detail.get("applyUrl") or detail.get("postingUrl"),
+                    posting_url=detail.get("postingUrl"),
+                    published_at=j.get("releasedDate"),
+                    industry=(j.get("industry") or {}).get("label"),
+                    description_text=text,
+                )
+                yield _item(pid, detail.get("postingUrl"), detail.get("applyUrl"), j.get("name") or "", text, structured, _iso(j.get("releasedDate")), (j.get("language") or {}).get("code"), detail)
+            offset += len(content)
+            if not content or offset >= int(page.get("totalFound") or 0) or offset >= 1000:
+                break
+        ctx.listing_complete = offset < 1000
+        ctx.set_cursor({"released": seen})
