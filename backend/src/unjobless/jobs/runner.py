@@ -223,7 +223,10 @@ def execute_run(
                 from unjobless.db.models import RawSourceDocument
 
                 doc = db.execute(
-                    select(RawSourceDocument).where(RawSourceDocument.source_id == source.id, RawSourceDocument.source_native_id == item.native_id)
+                    select(RawSourceDocument).where(
+                        RawSourceDocument.source_id == source.id,
+                        RawSourceDocument.source_native_id == item.native_id,
+                    )
                 ).scalar_one_or_none()
                 if doc is not None:
                     doc.last_seen_in_listing_at = doc.last_collected_at = utcnow()
