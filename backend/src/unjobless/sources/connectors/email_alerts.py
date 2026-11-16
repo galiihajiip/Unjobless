@@ -32,26 +32,63 @@ from unjobless.core.errors import BlockedURL
 from unjobless.domain.enums import CollectionMethod, SourceCategory
 from unjobless.fetch.safe_fetch import ip_is_public, validate_url
 from unjobless.intelligence.text import clean_text, html_to_text
-from unjobless.sources.contract import CollectContext, CollectedItem, Connector, ConnectorInfo, HealthResult, SourceUnavailable
+from unjobless.sources.contract import (
+    CollectContext,
+    CollectedItem,
+    Connector,
+    ConnectorInfo,
+    HealthResult,
+    SourceUnavailable,
+)
 from unjobless.sources.registry import register
 
 DEFAULT_SENDERS = [
-    "glints.com", "linkedin.com", "jobstreet.com", "jobstreet.co.id", "seek.com", "kalibrr.com", "indeed.com",
-    "karir.com", "jobs.id", "kitalulus.com", "dealls.com", "topkarir.com", "ekrut.com",
+    "glints.com",
+    "linkedin.com",
+    "jobstreet.com",
+    "jobstreet.co.id",
+    "seek.com",
+    "kalibrr.com",
+    "indeed.com",
+    "karir.com",
+    "jobs.id",
+    "kitalulus.com",
+    "dealls.com",
+    "topkarir.com",
+    "ekrut.com",
 ]
-JOB_LINK = re.compile(r"(/jobs?/|/opportunities/|/lowongan|/loker|/career|/vacanc|/job-detail|/viewjob|/comm/jobs/view|jobid=|/j/)", re.I)
-SKIP_LINK = re.compile(r"(unsubscribe|preferences|settings|privacy|terms|help|login|signin|sign-in|app\.|apps\.apple|play\.google|/search\?|alert|manage)", re.I)
-TRACKING = re.compile(r"^(utm_|trk|tracking|ref|refId|trackingId|lipi|midToken|midSig|eid|otpToken|ssid|sid|src|source|mc_)", re.I)
+JOB_LINK = re.compile(
+    r"(/jobs?/|/opportunities/|/lowongan|/loker|/career|/vacanc|/job-detail|/viewjob|/comm/jobs/view|jobid=|/j/)",
+    re.I,
+)
+SKIP_LINK = re.compile(
+    r"(unsubscribe|preferences|settings|privacy|terms|help|login|signin|sign-in|app\.|apps\.apple|play\.google|/search\?|alert|manage)",
+    re.I,
+)
+TRACKING = re.compile(
+    r"^(utm_|trk|tracking|ref|refId|trackingId|lipi|midToken|midSig|eid|otpToken|ssid|sid|src|source|mc_)",
+    re.I,
+)
 FETCH_LIMIT = 200
 
 
 class EmailAlertsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    imap_host: str = Field(default="imap.gmail.com", max_length=253, description="IMAP server (TLS, port 993).")
-    username: str = Field(min_length=3, max_length=254, description="Mailbox login, e.g. your-alerts@gmail.com")
+    imap_host: str = Field(
+        default="imap.gmail.com", max_length=253, description="IMAP server (TLS, port 993)."
+    )
+    username: str = Field(
+        min_length=3, max_length=254, description="Mailbox login, e.g. your-alerts@gmail.com"
+    )
     folder: str = Field(default="INBOX", max_length=200)
-    sender_domains: list[str] = Field(default_factory=lambda: list(DEFAULT_SENDERS), max_length=50, description="Only alerts from these sender domains are read.")
-    lookback_days: int = Field(default=14, ge=1, le=90, description="On the first run, read alerts from this many days back.")
+    sender_domains: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_SENDERS),
+        max_length=50,
+        description="Only alerts from these sender domains are read.",
+    )
+    lookback_days: int = Field(
+        default=14, ge=1, le=90, description="On the first run, read alerts from this many days back."
+    )
 
     @field_validator("imap_host")
     @classmethod
@@ -95,9 +132,18 @@ def parse_alert(msg: EmailMessage) -> list[dict[str, Any]]:
         for a in tree.css("a[href]"):
             href = (a.attributes.get("href") or "").strip()
             title = clean_text(a.text(deep=True, separator=" "))
-            if not href.startswith(("http://", "https://")) or not JOB_LINK.search(href) or SKIP_LINK.search(href):
+            if (
+                not href.startswith(("http://", "https://"))
+                or not JOB_LINK.search(href)
+                or SKIP_LINK.search(href)
+            ):
                 continue
-            if len(title) < 4 or len(title) > 160 or title.lower() in {"view job", "apply", "apply now", "lihat lowongan", "lamar", "see all jobs", "view all"}:
+            if (
+                len(title) < 4
+                or len(title) > 160
+                or title.lower()
+                in {"view job", "apply", "apply now", "lihat lowongan", "lamar", "see all jobs", "view all"}
+            ):
                 continue
             link = clean_link(href)
             if link in seen:
@@ -127,7 +173,9 @@ def parse_alert(msg: EmailMessage) -> list[dict[str, Any]]:
                     seen.add(link)
                     block = [x.strip() for x in lines[max(0, i - 3) : i] if x.strip() and "http" not in x]
                     title = block[0] if block else "Job from alert"
-                    jobs.append({"title": title[:160], "url": link, "context": clean_text("\n".join(block))[:1500]})
+                    jobs.append(
+                        {"title": title[:160], "url": link, "context": clean_text("\n".join(block))[:1500]}
+                    )
     return jobs
 
 
@@ -228,12 +276,22 @@ class EmailAlertsConnector(Connector):
                         raw_text=f"{job['title']}\n\n{job['context']}\n\nSource link: {job['url']}",
                         title=job["title"],
                         published_at=published,
-                        metadata={"via": "email_alert", "platform": platform, "alert_subject": str(msg.get("Subject", ""))[:300]},
+                        metadata={
+                            "via": "email_alert",
+                            "platform": platform,
+                            "alert_subject": str(msg.get("Subject", ""))[:300],
+                        },
                         extracted_text=f"{job['title']}\n{job['context']}\nApply: {job['url']}",
-                        structured=[{
-                            "@type": "UnjoblessJob", "provenance": "email_job_alert", "title": job["title"],
-                            "posting_url": job["url"], "application_url": job["url"], "description_text": job["context"],
-                        }],
+                        structured=[
+                            {
+                                "@type": "UnjoblessJob",
+                                "provenance": "email_job_alert",
+                                "title": job["title"],
+                                "posting_url": job["url"],
+                                "application_url": job["url"],
+                                "description_text": job["context"],
+                            }
+                        ],
                     )
         finally:
             mb.close()
