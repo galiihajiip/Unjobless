@@ -168,6 +168,30 @@ def connectors() -> list[dict[str, Any]]:
     return out
 
 
+@router.get("/starter-pack")
+def starter_pack() -> list[dict[str, Any]]:
+    from unjobless.sources.starter_pack import describe
+
+    return describe()
+
+
+class PackIn(BaseModel):
+    keys: list[str] = Field(min_length=1, max_length=50)
+
+
+@router.post("/starter-pack", status_code=201)
+def install_pack(body: PackIn, db: DB) -> list[SourceOut]:
+    from unjobless.sources.starter_pack import install
+
+    created = install(db, body.keys)
+    db.commit()
+    for s in created:
+        run = enqueue_source_run(db, s, RunTrigger.MANUAL)
+        db.commit()
+        defer("run_source", queueing_lock=f"run-{run.id}", run_id=run.id)
+    return [to_out(db, s) for s in created]
+
+
 @router.get("")
 def list_sources(db: DB, include_system: bool = False) -> list[SourceOut]:
     q = select(Source).order_by(Source.name)
