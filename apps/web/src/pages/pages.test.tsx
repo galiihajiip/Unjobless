@@ -26,7 +26,7 @@ const detail = { ...vacancy, redirected_from: null, alternative_title: null, dep
   unknown_fields: ['deadline'], duplicate_candidates: [], saved_note: null }
 
 function routeData(url: string): unknown {
-  const u = url.replace(/^\/api/, '').split('?')[0]
+  const u = url.replace(/^\/api/, '').split('?')[0] ?? ''
   if (u === '/auth/state') return { bootstrapped: true, authenticated: true, setup_token_required: false, display_name: 'Tester' }
   if (u === '/overview') return { counts: { open_vacancies: 1, new_this_week: 1, closing_soon: 0, potential_leads: 0, needs_review: 0 }, sources: { total: 0, enabled: 0, failing: 0, rate_limited: 0, last_run_at: null }, top_matches: [] }
   if (u === '/vacancies') return { items: [vacancy], total: 1, next_cursor: null }
