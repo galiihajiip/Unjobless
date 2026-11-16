@@ -375,7 +375,7 @@ class SmartRecruitersConnector(Connector):
                 seen[pid] = released
                 if known.get(pid) == released:
                     # Unchanged posting: re-emit a light item so the raw store records it as seen (no detail call).
-                    yield CollectedItem(native_id=pid, url=None, content_type="application/json", raw_text=json.dumps(j, sort_keys=True, default=str), title=j.get("name"), metadata={"listing_only": True})
+                    yield CollectedItem(native_id=pid, url=None, content_type="application/json", raw_text="", title=j.get("name"), listing_only=True)
                     continue
                 detail = _get_json(ctx, f"{base}/{pid}")
                 sections = (detail.get("jobAd") or {}).get("sections") or {}
