@@ -33,6 +33,7 @@ class CollectionMethod(StrEnum):
     USER_PASTE = "USER_PASTE"
     USER_UPLOAD = "USER_UPLOAD"
     EMAIL_ALERT = "EMAIL_ALERT"
+    AGGREGATOR_API = "AGGREGATOR_API"
 
 
 class PolicyStatus(StrEnum):
