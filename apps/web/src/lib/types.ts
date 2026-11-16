@@ -183,6 +183,7 @@ export interface ConnectorInfo {
   documentation_url: string | null
   terms_url: string | null
   default_schedule_seconds: number | null
+  auth_required: boolean
   terms_review: string
   config_schema: JsonSchema
 }
