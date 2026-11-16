@@ -6,7 +6,7 @@ Unjobless is a private, self-hosted career discovery and application workspace f
 
 ## Capabilities
 
-- **Sources:** documented public ATS boards (Greenhouse, Lever, Ashby) and a robots.txt-compliant career-page crawler (JSON-LD `JobPosting`, sitemaps, RSS). Sources stay disabled until you record a terms review; an exclusion list blocks domains.
+- **Sources:** a **job-alert mailbox** connector (reads Glints/LinkedIn/JobStreet/Kalibrr… alert e-mails from your own mailbox every 15 min, read-only), documented public ATS boards (Greenhouse, Lever, Ashby) and a robots.txt-compliant career-page crawler (JSON-LD `JobPosting`, sitemaps, RSS). Sources stay disabled until you record a terms review; an exclusion list blocks domains.
 - **Import Center:** URL batches (SSRF-safe fetching, per-item status, paste fallback), pasted posts stored exactly as pasted, poster/PDF/caption uploads with OCR, and a **“Send to Unjobless” browser clipper** for sites that block bots (Glints, LinkedIn, JobStreet…): it sends only the page you are viewing yourself.
 - **Evidence first:** immutable raw snapshots with content hashes and versions. Every extracted field has an origin (explicit / inferred / yours), a confidence and a verbatim excerpt.
 - **Opportunity Signals:** a bilingual rule engine (loker, magang, refer, oprec…) separates `DIRECT_VACANCY` from leads, referrals, campaigns, reviews, discussions and noise. Confidence never "verifies" anything.
