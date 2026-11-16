@@ -13,6 +13,7 @@ Security:
 
 from __future__ import annotations
 
+import contextlib
 import email
 import email.policy
 import imaplib
@@ -212,10 +213,8 @@ class _Mailbox:
                 yield uid, raw
 
     def close(self) -> None:
-        try:
+        with contextlib.suppress(Exception):
             self.m.logout()
-        except Exception:  # noqa: S110
-            pass
 
 
 MAILBOX_FACTORY = _Mailbox  # test hook
