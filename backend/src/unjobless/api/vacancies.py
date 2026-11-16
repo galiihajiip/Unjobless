@@ -133,6 +133,35 @@ def _sources_for(db: DB, ids: list[int]) -> dict[int, list[dict[str, Any]]]:
     return out
 
 
+INTERN_TITLE = r"(intern|magang|internship|pkl|praktik kerja|kerja praktek|apprentice|trainee|mt program|graduate program)"
+SENIOR_TITLE = (
+    r"(senior|sr\.?\s|lead|principal|staff |head of|manager|director|vp|vice president|chief|"
+    r"supervisor|spv|kepala|architect|expert|specialist ii|iii)"
+)
+
+
+def level_condition(level: str) -> Any:
+    """Early-career presets. Also catches untagged titles (seniority UNKNOWN) by keyword."""
+    title = func.lower(JobVacancy.title)
+    internship = or_(
+        JobVacancy.employment_type == "INTERNSHIP",
+        JobVacancy.seniority == "INTERN",
+        title.op("~")(INTERN_TITLE),
+    )
+    if level == "internship":
+        return internship
+    return or_(
+        internship,
+        JobVacancy.employment_type == "TRAINEE",
+        JobVacancy.seniority.in_(["ENTRY", "JUNIOR"]),
+        and_(
+            JobVacancy.seniority == "UNKNOWN",
+            ~title.op("~")(SENIOR_TITLE),
+            or_(JobVacancy.experience_years_min.is_(None), JobVacancy.experience_years_min <= 2),
+        ),
+    )
+
+
 @router.get("/vacancies")
 def feed(
     db: DB,
@@ -142,6 +171,7 @@ def feed(
     employment_type: list[str] = Query(default=[]),
     work_arrangement: list[str] = Query(default=[]),
     seniority: list[str] = Query(default=[]),
+    level: Literal["any", "internship", "early"] = "any",
     city: list[str] = Query(default=[]),
     skill: list[str] = Query(default=[]),
     company: str | None = None,
@@ -184,6 +214,8 @@ def feed(
         conds.append(JobVacancy.work_arrangement.in_(work_arrangement))
     if seniority:
         conds.append(JobVacancy.seniority.in_(seniority))
+    if level != "any":
+        conds.append(level_condition(level))
     if city:
         city_conds: list[Any] = [
             func.lower(JobLocation.city) == c.lower() for c in city if c.lower() != "remote"
