@@ -230,6 +230,10 @@ class EmailAlertsConnector(Connector):
                         published_at=published,
                         metadata={"via": "email_alert", "platform": platform, "alert_subject": str(msg.get("Subject", ""))[:300]},
                         extracted_text=f"{job['title']}\n{job['context']}\nApply: {job['url']}",
+                        structured=[{
+                            "@type": "UnjoblessJob", "provenance": "email_job_alert", "title": job["title"],
+                            "posting_url": job["url"], "application_url": job["url"], "description_text": job["context"],
+                        }],
                     )
         finally:
             mb.close()
