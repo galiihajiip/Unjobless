@@ -19,6 +19,11 @@ interface Facets {
   sources: { id: number; name: string }[]
 }
 const MULTI = ['status', 'freshness', 'employment_type', 'work_arrangement', 'city', 'skill', 'seniority'] as const
+const LEVELS = [
+  { value: 'any', label: 'All levels' },
+  { value: 'internship', label: 'Magang / internship' },
+  { value: 'early', label: 'Early career (no senior)' },
+]
 const SORTS = [
   { value: 'newest', label: 'Newest first' },
   { value: 'best_fit', label: 'Best profile fit' },
@@ -110,6 +115,13 @@ export default function DiscoverPage() {
           <label className="sr-only" htmlFor="discover-q">Search vacancies</label>
           <input id="discover-q" className="input" placeholder="Search roles, companies, skills… e.g. magang data jakarta" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <select aria-label="Level" className="select" style={{ width: 'auto', minWidth: 170 }} value={sp.get('level') ?? 'any'} onChange={(e) => setParam('level', e.target.value === 'any' ? null : e.target.value)}>
+          {LEVELS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
         <select aria-label="Sort" className="select" style={{ width: 'auto', minWidth: 200 }} value={sp.get('sort') ?? 'newest'} onChange={(e) => setParam('sort', e.target.value)}>
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>
