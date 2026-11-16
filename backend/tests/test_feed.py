@@ -106,3 +106,31 @@ def test_apply_link_requires_safe_url(client):
         vid = v.id
     r = client.get(f"/api/vacancies/{vid}/apply-link")
     assert r.status_code == 422
+
+
+def test_level_presets_filter_senior_and_catch_untagged_titles(client):
+    from unjobless.domain.enums import Seniority
+
+    with session_scope() as db:
+        for title, sen in [
+            ("Senior Backend Engineer", Seniority.UNKNOWN),
+            ("Marketing Manager", Seniority.UNKNOWN),
+            ("Staff Administrasi", Seniority.UNKNOWN),
+            ("Program Magang Batch 3", Seniority.UNKNOWN),
+            ("International Sales Lead", Seniority.UNKNOWN),
+        ]:
+            db.add(
+                JobVacancy(
+                    title=title,
+                    normalized_title=title.lower(),
+                    verification_status=V.LIKELY_OPEN,
+                    employment_type=EmploymentType.FULL_TIME,
+                    seniority=sen,
+                )
+            )
+    early = {x["title"] for x in client.get("/api/vacancies?limit=100&level=early").json()["items"]}
+    assert "Staff Administrasi" in early and "Program Magang Batch 3" in early
+    assert not early & {"Senior Backend Engineer", "Marketing Manager", "International Sales Lead"}
+    intern = {x["title"] for x in client.get("/api/vacancies?limit=100&level=internship").json()["items"]}
+    assert "Program Magang Batch 3" in intern
+    assert "Staff Administrasi" not in intern and "International Sales Lead" not in intern
