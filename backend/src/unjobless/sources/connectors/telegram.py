@@ -52,7 +52,7 @@ class TelegramConfig(BaseModel):
     channels: list[str] = Field(
         default_factory=lambda: list(DEFAULT_CHANNELS),
         min_length=1,
-        max_length=40,
+        max_length=200,
         description="Public channel usernames (without @), e.g. lokerbumncom",
     )
     pages_per_channel: int = Field(
