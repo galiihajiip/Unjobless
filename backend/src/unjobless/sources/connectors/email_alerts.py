@@ -151,7 +151,8 @@ def parse_alert(msg: EmailMessage) -> list[dict[str, Any]]:
                 continue
             seen.add(link)
             # Surrounding text: climb to the nearest block that contains more than the title (company, location, salary).
-            node, context = a, title
+            node: Any = a
+            context = title
             for _ in range(5):
                 node = node.parent
                 if node is None:
@@ -199,12 +200,12 @@ class _Mailbox:
         if typ != "OK":
             raise SourceUnavailable(f"Folder {folder!r} not found.")
         if last_uid:
-            typ, data = self.m.uid("search", None, f"UID {last_uid + 1}:*")
+            typ, data = self.m.uid("search", f"UID {last_uid + 1}:*")
         else:
             from datetime import date, timedelta
 
             since = (date.today() - timedelta(days=since_days)).strftime("%d-%b-%Y")
-            typ, data = self.m.uid("search", None, f"SINCE {since}")
+            typ, data = self.m.uid("search", f"SINCE {since}")
         uids = sorted(int(u) for u in (data[0] or b"").split() if int(u) > last_uid)[:FETCH_LIMIT]
         for uid in uids:
             typ, parts = self.m.uid("fetch", str(uid), "(BODY.PEEK[])")  # PEEK: never sets \\Seen
