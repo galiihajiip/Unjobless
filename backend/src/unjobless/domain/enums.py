@@ -32,6 +32,7 @@ class CollectionMethod(StrEnum):
     USER_URL_IMPORT = "USER_URL_IMPORT"
     USER_PASTE = "USER_PASTE"
     USER_UPLOAD = "USER_UPLOAD"
+    EMAIL_ALERT = "EMAIL_ALERT"
 
 
 class PolicyStatus(StrEnum):
