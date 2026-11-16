@@ -68,7 +68,9 @@ def _get_json(ctx: CollectContext, url: str) -> Any:
         raise RuntimeError(e.message) from e
     if res.status_code == 429:
         ra = res.headers.get("retry-after")
-        raise SourceRateLimited("Source API rate limit", retry_after=float(ra) if ra and ra.isdigit() else None)
+        raise SourceRateLimited(
+            "Source API rate limit", retry_after=float(ra) if ra and ra.isdigit() else None
+        )
     if res.status_code in (401, 403):
         raise SourceUnavailable(f"Board is not public (HTTP {res.status_code}).")
     if res.status_code == 404:
